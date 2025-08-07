@@ -5,6 +5,13 @@ from fmfts.experiments.trainer import Trainer
 from fmfts.dataloader.ns2d import DatasetNS2D
 from fmfts.experiments.ns2d.models import VelocityModelNS2D, FlowModelNS2D
 
+features_velocity = (64, 96, 96, 128)
+features_flow     = (128, 192, 192, 256)
+lr_max = 1e-4
+lr_min = 1e-5
+batch_size = 16
+steps_flow = 5
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("modeltype", help="must be either 'velocity' or 'flow'")
@@ -17,8 +24,8 @@ if __name__ == "__main__":
     torch.set_default_device("cuda")
 
     if args.modeltype == "velocity":
-        model = VelocityModelNS2D(features = (64, 96, 96, 128))
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+        model = VelocityModelNS2D(features = features_velocity)
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr_max)
 
         trainer = Trainer(
             model_name = "velocity",
@@ -29,19 +36,19 @@ if __name__ == "__main__":
             dataset_test = DatasetNS2D(mode = "test"),
             model = model,
             optimizer = optimizer,
-            lr_min = 1e-5,
-            training_kwargs = dict(batch_size=16),
+            lr_min = lr_min,
+            training_kwargs = dict(batch_size=batch_size),
             load_model_if_exists = not args.new,
             load_optimizer_if_exists = not args.new
         )
     elif args.modeltype == "flow":
-        velocity_model = VelocityModelNS2D(features = (64, 96, 96, 128))
+        velocity_model = VelocityModelNS2D(features = features_velocity)
         velocity_model_path = "./trained_models/model_velocity.pt"
         try:    velocity_model.load_state_dict(torch.load(velocity_model_path, weights_only=True))
         except: raise Exception(f"couldn't load velocity model ({velocity_model_path})")
 
-        flow_model = FlowModelNS2D(velocity_model, features = (64, 96, 96, 128))
-        optimizer = torch.optim.Adam(flow_model.parameters(), lr=1e-4)
+        flow_model = FlowModelNS2D(velocity_model, features = features_flow)
+        optimizer = torch.optim.Adam(flow_model.parameters(), lr=lr_max)
 
         trainer = Trainer(
             model_name = "flow",
@@ -52,8 +59,8 @@ if __name__ == "__main__":
             dataset_test = DatasetNS2D(mode = "test"),
             model = flow_model,
             optimizer = optimizer,
-            lr_min = 1e-5,
-            training_kwargs = dict(batch_size=8, steps=5),
+            lr_min = lr_min,
+            training_kwargs = dict(batch_size=batch_size, steps=steps_flow),
             load_model_if_exists = not args.new,
             load_optimizer_if_exists = not args.new
         )
