@@ -1,3 +1,4 @@
+import os
 import torch 
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
@@ -7,7 +8,7 @@ class DatasetNS2D(Dataset):
     def __init__(self, mode, history=1): 
         assert mode in ["train", "test"]
         
-        datapath = f"../datasets/ns2d/ns2d_data_{mode}.pt"
+        datapath = f"{os.path.dirname(os.path.abspath(__file__))}/../datasets/ns2d/ns2d_data_{mode}.pt"
         self.history = history
         # data has shape (n_samples, n_timesteps, n_channels, height, width)
         self.data = torch.load(datapath, weights_only=True)
@@ -27,14 +28,18 @@ class DatasetNS2D(Dataset):
 
     def __len__(self): 
         return self.n_samples*(self.total_sequence_len - self.history - 1)
+    
+    def get(self, i1, i2, sequence_len):
+        return self.data[i1, i2:i2+sequence_len]
 
     def __getitem__(self, idx): 
         i1 = idx % self.n_samples
         i2 = idx // self.n_samples
         
-        y = self.data[i1,i2:i2+self.history]
-        x = self.data[i1,i2+self.history]
+        y = self.get(i1, i2, self.history)
+        x = self.get(i1, i2+self.history, 1)
         y = y.flatten(end_dim=1)
+        x = x.flatten(end_dim=1)
         return y, x
 
     def compute_speed(self, x):

@@ -6,86 +6,6 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import time
 
-# include_timestamp = True
-# include_vertical_position = True
-# 
-# TRAIN_MODE = "velocity" # velocity
-# settings = {
-#     "one_step": {
-#         "lr": 1e-4,
-#         "modelpath": "one_step_model.pt",
-#         "kwargs_train": { 
-#             "steps": 15,
-#             "batch_size": 4
-#         }
-#     },
-#     "flow": {
-#         "lr": 1e-4,
-#         "modelpath": "flow_model.pt",
-#         "kwargs_train": { 
-#             "steps": 5,
-#             "batch_size": 4
-#         }
-#     },
-#     "velocity": {
-#         "lr": 1e-4,
-#         "modelpath": "velocity_model.pt",
-#         "kwargs_train": { 
-#             "batch_size": 4
-#         }
-#     }
-# }[TRAIN_MODE]
-# print("training mode:", TRAIN_MODE)
-# print("settings:", settings)
-# 
-# torch.set_default_device("cuda")
-
-
-# dataset = DatasetFullNS3D(
-#     history=1, At=3/4, dt=5, dx=4, dy=4, dz=4, train=True, 
-#     include_timestamp=include_timestamp)
-# dataset_test = DatasetFullNS3D(
-#     history=1, At=3/4, dt=5, dx=4, dy=4, dz=4, train=False, 
-#     include_timestamp=include_timestamp)
-
-
-
-# if os.path.exists(settings["modelpath"]):
-#     self.model = torch.load(settings["modelpath"], weights_only=False)
-#     print("loaded model")
-# else:
-#     print("couldn't load model")
-#     if TRAIN_MODE == "velocity":
-#         self.model = model.Velocity(
-#             include_vertical_position=include_vertical_position, 
-#             include_timestamp=include_timestamp
-#         )
-
-    # NOTE: NOT YET IMPLEMENTED
-    # elif TRAIN_MODE == "flow":
-    #     if os.path.exists("velocity_model.pt"):
-    #         v = torch.load("velocity_model.pt", weights_only=False)
-    #         u = model.Flow(velocity_model=v)
-    #         print("loaded velocity model")
-    #     else:
-    #         print("couldn't load velocity model. Cannot train flow model! Exiting.")
-    #         exit()
-    # elif TRAIN_MODE == "one_step":
-    #     if os.path.exists("velocity_model.pt"):
-    #         v = torch.load("velocity_model.pt", weights_only=False)
-    #         u = model.OneStepModel(velocity_model=v)
-    #         print("loaded velocity model")
-    #     else:
-    #         print("couldn't load velocity model. Cannot train one step model! Exiting.")
-    #         exit()
-
-# if os.path.exists(f"optimizer_{TRAIN_MODE}.pt"):
-#     opt = torch.optim.Adam(self.model.parameters(), lr=settings["lr"])
-#     opt.load_state_dict(torch.load(f"optimizer_{TRAIN_MODE}.pt", weights_only=True))
-# else:
-#     opt = torch.optim.Adam(self.model.parameters(), lr=settings["lr"])
-#     # opt = torch.optim.SGD(u.parameters(), lr=settings["lr"], momentum=0.99)
-
 
 
 class Trainer:
@@ -136,6 +56,7 @@ class Trainer:
     def loop(self):
         loss_test_avg = None
         loss_train_avg = None
+        starting_time = time.time()
 
         for ctr, loss_train in enumerate(self.model.train_model(self.dataset, self.optimizer, **self.training_kwargs)):
 
@@ -150,10 +71,16 @@ class Trainer:
             if ctr == 0:    loss_train_avg = loss_train
             else:           loss_train_avg = self.loss_decay * loss_train_avg + (1 - self.loss_decay) * loss_train
 
+            time_passed = time.time() - starting_time
+            seconds = int(time_passed) % 60
+            minutes = int(time_passed / 60) % 60
+            hours   = int(time_passed / (60*60)) % 24
+            days    = int(time_passed / (24*60*60))
             print(
                 f"training {self.model_name} model (iter = {ctr}): "+\
                 f"loss/train = {loss_train_avg:.4e} loss/test = {loss_test_avg:.4e} "+\
-                f"lr = {self.lr_scheduler.get_last_lr()[0]:.4e}")
+                f"lr = {self.lr_scheduler.get_last_lr()[0]:.4e} "+\
+                f"time passed = {days}d {hours}h {minutes}m {seconds}s")
 
             self.lr_scheduler.step()
             

@@ -36,3 +36,12 @@ class FlowModel(TimeSeriesModel):
         phi = self.phi(x, y, tx, v, delta)
         return x + delta_*v + delta_**2/2 * phi
     
+    def sample(self, y1, x0=None, steps=1):
+        if x0 is None: x0 = self.p0.sample(y1.shape).to(y1.device)
+        
+        x = x0
+        dt = torch.tensor(1/steps).expand(len(y1))
+        for i in range(steps): 
+            x = self(x, y1, i*dt, dt)
+            
+        return x

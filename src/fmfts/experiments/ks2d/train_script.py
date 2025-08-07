@@ -1,5 +1,3 @@
-import os
-
 import torch
 import torch.optim
 from fmfts.experiments.trainer import Trainer
