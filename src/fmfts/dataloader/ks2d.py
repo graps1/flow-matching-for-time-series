@@ -1,12 +1,13 @@
+import os
 import torch 
-import matplotlib.pyplot as plt
 from torch.utils.data import Dataset
+import matplotlib.pyplot as plt
 
 class DatasetKS2D(Dataset):
     def __init__(self, mode, history=1): 
         assert mode in ["train", "test"]
 
-        datapath = f"../datasets/ks2d/ks2d_data_{mode}.pt"
+        datapath = f"{os.path.dirname(os.path.abspath(__file__))}/../datasets/ks2d/ks2d_data_{mode}.pt"
 
         self.history = history
         self.data = torch.load(datapath, weights_only=True)

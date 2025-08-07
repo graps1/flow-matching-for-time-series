@@ -1,3 +1,6 @@
 **/__pycache__
 **/*.egg-info
 src/fmfts/datasets
+**/runs
+**/checkpoints
+*.pt

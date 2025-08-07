@@ -1,7 +1,7 @@
 import torch 
 from fmfts.utils.models.time_series_model import TimeSeriesModel
 
-class ODEFlow(TimeSeriesModel):
+class FlowModel(TimeSeriesModel):
     def __init__(self, v, p0=torch.distributions.Normal(0,1)):
         super().__init__()
         self.v = v
