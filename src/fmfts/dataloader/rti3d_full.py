@@ -1,4 +1,4 @@
-
+import os
 import torch 
 import h5py
 from torch.utils.data import Dataset
@@ -16,8 +16,8 @@ class DatasetFullRTI3D(Dataset):
         super().__init__()
         assert mode in ["train", "test"]
 
-        path = f"../datasets/rti3d/{mode}/rayleigh_taylor_instability_At_{str(At)[2:]}.hdf5"
-        f = h5py.File(path, "r")
+        datapath = f"{os.path.dirname(os.path.abspath(__file__))}/../datasets/rti3d/{mode}/rayleigh_taylor_instability_At_{str(At)[2:]}.hdf5"
+        f = h5py.File(datapath, "r")
 
         self.history = history
         self.dt = dt
@@ -53,7 +53,7 @@ class DatasetFullRTI3D(Dataset):
         std  = self.std.view(1, -1, 1, 1, 1)
         return data*(std+1e-5) + mean
     
-    def get(self, i0, i1, sequence_len=1, include_timestamp=False):
+    def get(self, i0, i1, sequence_len=1):
         velocity = torch.tensor(self.velocity_raw[i0, i1:i1+sequence_len*self.dt:self.dt, ::self.dx, ::self.dy, ::self.dz])
         density =  torch.tensor( self.density_raw[i0, i1:i1+sequence_len*self.dt:self.dt, ::self.dx, ::self.dy, ::self.dz])
         velocity = velocity.permute(0, 4, 1, 2, 3) # <- shifts the channel to dim=1
@@ -61,7 +61,7 @@ class DatasetFullRTI3D(Dataset):
         x = torch.cat((velocity, density), dim=1)
         x = self.normalize(x)
 
-        if include_timestamp:
+        if self.include_timestamp:
             _, _, width, depth, height = x.shape
             timestamp = (i1 + torch.arange(len(velocity))*self.dt)/119
             timestamp = timestamp.view(-1, 1, 1, 1, 1).expand(-1, 1, width, depth, height)
@@ -74,9 +74,9 @@ class DatasetFullRTI3D(Dataset):
         idx = idx // self.n_runs
         i1 = idx % self.max_time_idx
         
-        y = self.get(i0, i1, self.history, include_timestamp=self.include_timestamp)
+        y = self.get(i0, i1, self.history)
         y = y.flatten(end_dim=1)
-        x = self.get(i0, i1+self.history*self.dt, 1, include_timestamp=self.include_timestamp)
+        x = self.get(i0, i1+self.history*self.dt, 1)
         x = x[0]
 
         return y, x
