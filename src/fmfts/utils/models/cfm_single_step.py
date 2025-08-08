@@ -30,3 +30,8 @@ class SingleStepModel(TimeSeriesModel):
         v = torch.no_grad(self.v)(x0, y, torch.zeros(len(x0)))
         phi = self.phi(x0, y, v)
         return x0 + v + phi
+    
+    def sample(self, y1, x0=None):
+        if x0 is None: x0 = self.p0.sample(y1.shape).to(y1.device)
+        x = self(x0, y1)
+        return x

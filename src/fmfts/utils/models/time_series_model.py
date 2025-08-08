@@ -26,6 +26,7 @@ class TimeSeriesModel(torch.nn.Module):
 
             opt.zero_grad()
             loss = self.compute_loss(y1, x1, **kwargs)
+            # loss.backward(create_graph=True)
             loss.backward()
             opt.step()
 

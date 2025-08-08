@@ -16,6 +16,7 @@ class Trainer:
                  model,
                  training_kwargs,
                  optimizer,
+                 lr_max = 1e-4,
                  lr_min = 5e-6,
                  loss_decay = 0.99,
                  runs_dir = "./runs",
@@ -44,6 +45,7 @@ class Trainer:
             print(f"loaded model {self.model_path}")
         if load_optimizer_if_exists and os.path.exists(self.optimizer_path):
             self.optimizer.load_state_dict(torch.load(self.optimizer_path, weights_only=True))
+            for g in self.optimizer.param_groups: g['lr'] = lr_max
             print(f"loaded optimizer {self.optimizer_path}")
 
         self.dataloader_test = DataLoader(

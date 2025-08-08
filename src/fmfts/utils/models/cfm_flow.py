@@ -13,7 +13,9 @@ class FlowModel(TimeSeriesModel):
     def compute_loss(self, y1, x1, steps=2):
         bs = y1.shape[0] 
         x0 = self.p0.sample(x1.shape).to(x1.device)
-        delta = ( 1e-2+torch.rand(bs)*(1-1e-2) )**(1/3)
+        # delta = ( 1e-2+torch.rand(bs)*(1-1e-2) ) # **(1/3)
+        delta = ( 1e-3+torch.rand(bs)*(1-1e-3) )**(1/2)
+        delta_ = delta.view(-1, *[1]*(x1.dim()-1)) 
         tx = torch.rand(bs)*(1-delta)
         tx_ = tx.view(-1, *[1]*(x1.dim()-1)) 
         xt = (1 - tx_)*x0 + tx_*x1
@@ -24,6 +26,7 @@ class FlowModel(TimeSeriesModel):
                 F_multistep = self(F_multistep, y1, tx+k*delta/steps, delta/steps)
 
         F_single = self(xt, y1, tx, delta)
+        # loss = (( F_multistep - F_single ).pow(2) / (3*delta_**2)).mean()
         loss = ( F_multistep - F_single ).pow(2).mean()
         return loss
     
