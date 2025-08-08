@@ -6,10 +6,10 @@ from fmfts.dataloader.rti3d_sliced import DatasetSlicedRTI3D
 from fmfts.experiments.rti3d_sliced.models import VelocityModelSlicedRTI3D
 
 
-features_velocity = (64, 96, 96, 128)
+features_velocity = (128, 196, 196, 256)
 lr_max = 1e-4
 lr_min = 1e-5
-batch_size = 16
+batch_size = 4
 At = 3/4
 dt, dy, dz = 5, 1, 1 
 include_timestamp = True

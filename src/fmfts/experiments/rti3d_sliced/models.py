@@ -6,7 +6,7 @@ from fmfts.utils.models.cfm_velocity import VelocityModel
 class VelocityModelSlicedRTI3D(VelocityModel):
     def __init__(self, 
                  p0=torch.distributions.Normal(0, 1), 
-                 features=(64, 96, 96, 128),
+                 features=(128, 196, 196, 256),
                  include_timestamp=True,
                  include_vertical_position=True,
                  time_embedding_dim = 4):
