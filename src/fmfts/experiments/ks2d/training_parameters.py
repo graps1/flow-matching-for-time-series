@@ -11,8 +11,8 @@ class TrainingParameters():
     features_velocity    : tuple = (64, 128)
     # features_flow        : tuple = (128, 192)
     # features_single_step : tuple = (128, 256)
-    lr_max : float = 1e-4
-    lr_min : float = 1e-5
+    lr_max : float = 1e-5
+    lr_min : float = 1e-6
     batch_size : int = 4
     steps_single_step : int = 10
     steps_flow : int = 5
