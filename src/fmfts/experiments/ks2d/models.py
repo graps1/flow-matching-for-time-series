@@ -7,7 +7,7 @@ class VelocityModelKS2D(VelocityModel):
         super().__init__(p0=p0)
 
         self.unet = UNet(
-                2+1, 1, # 2*#channels + 1, where the +1 is for the time embedding and the 2* is for the current and previous state
+                2+1, 1,
                 features=features,
                 padding=("circular", "circular"),
                 nl=torch.nn.ReLU())
