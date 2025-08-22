@@ -1,21 +1,23 @@
 import torch 
 from fmfts.utils.models.time_series_model import TimeSeriesModel
+from fmfts.utils.loss_fn import sobolev
 
 class FlowModel(TimeSeriesModel):
-    def __init__(self, v, p0=torch.distributions.Normal(0,1)):
+    def __init__(self, v, p0=torch.distributions.Normal(0,1), loss="sobolev"):
         super().__init__()
+        assert loss in ["l1", "l2", "sobolev"]
         self.v = v
         self.p0 = p0
+        self.loss_fn = loss
+
     
     def phi(self, x, y, tx, v, delta):
         raise NotImplementedError()
-
-    def compute_loss(self, y1, x1, steps=2):
+    
+    def compute_loss(self, y1, x1, ctr, steps=2):
         bs = y1.shape[0] 
         x0 = self.p0.sample(x1.shape).to(x1.device)
-        # delta = ( 1e-2+torch.rand(bs)*(1-1e-2) ) # **(1/3)
         delta = ( 1e-3+torch.rand(bs)*(1-1e-3) )**(1/2)
-        delta_ = delta.view(-1, *[1]*(x1.dim()-1)) 
         tx = torch.rand(bs)*(1-delta)
         tx_ = tx.view(-1, *[1]*(x1.dim()-1)) 
         xt = (1 - tx_)*x0 + tx_*x1
@@ -26,9 +28,36 @@ class FlowModel(TimeSeriesModel):
                 F_multistep = self(F_multistep, y1, tx+k*delta/steps, delta/steps)
 
         F_single = self(xt, y1, tx, delta)
-        # loss = (( F_multistep - F_single ).pow(2) / (3*delta_**2)).mean()
-        loss = ( F_multistep - F_single ).pow(2).mean()
+        if   self.loss_fn == "l1":      loss = ( F_multistep - F_single ).abs().mean()
+        elif self.loss_fn == "l2":      loss = ( F_multistep - F_single ).pow(2).mean() 
+        elif self.loss_fn == "sobolev": loss = sobolev(F_multistep - F_single, alpha=1.0, beta=1.0, t=tx)
+
+        # elif self.loss_fn == "discriminator":
+        #     D_fake = self.D(F_single   , xt, y1, tx, delta)
+        #     D_true = self.D(F_multistep, xt, y1, tx, delta)
+        #     D_fake = 0.005 + 0.99*D_fake
+        #     D_true = 0.005 + 0.99*D_true
+        #     loss = torch.log(D_true).mean() + torch.log(1-D_fake).mean()
+
         return loss
+
+    # def minibatch_gradient_step(self, y1, x1, ctr, opt, steps=2):
+    #     loss = self.compute_loss(y1, x1, ctr, steps=steps)
+
+    #     opt.zero_grad()
+    #     loss.backward()
+    #     opt.step()
+
+    #     # if ctr % 10 == 0:
+    #     #     self.opt_phi.zero_grad()
+    #     #     loss.backward()
+    #     #     self.opt_phi.step()
+    #     # else:
+    #     #     self.opt_D.zero_grad()
+    #     #     loss.backward()
+    #     #     self.opt_D.step()
+
+    #     return loss.item()
     
     def forward(self, x, y, tx, delta):
         if not isinstance(delta, torch.Tensor): delta = torch.tensor(delta)

@@ -1,5 +1,6 @@
 import torch
 from fmfts.utils.models.time_series_model import TimeSeriesModel
+from fmfts.utils.loss_fn import sobolev
 
 class VelocityModel(TimeSeriesModel):
     def __init__(self, p0=torch.distributions.Normal(0,1)):
@@ -9,7 +10,7 @@ class VelocityModel(TimeSeriesModel):
     def forward(self, x, y, tx):
         raise NotImplementedError()
 
-    def compute_loss(self, y1, x1):
+    def compute_loss(self, y1, x1, ctr):
         bs = y1.shape[0] 
         x0 = self.p0.sample(x1.shape).to(x1.device)
         tx = torch.rand(bs)
@@ -17,7 +18,8 @@ class VelocityModel(TimeSeriesModel):
         x = (1 - tx_)*x0 + tx_*x1
 
         v = self.forward(x, y1, tx)
-        loss = ( v - (x1 - x0) ).pow(2).mean()
+        #loss = ( v - (x1 - x0) ).pow(2).mean()
+        loss = sobolev(v - (x1 - x0), alpha=1.0, beta=1.0, t=tx)
         return loss
 
     def sample(self, y1, x0=None, steps=10, method="midpoint"):

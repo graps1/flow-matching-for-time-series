@@ -41,6 +41,7 @@ if __name__ == "__main__":
     print(f"creating new model: {'YES' if args.new else 'NO'}")
     state_dir = f"{args.experiment}/trained_models"
     state_path = f"{state_dir}/state_{args.modeltype}.pt"
+    print(state_path)
             
     if args.modeltype == "velocity":
         model = params.VelocityCls(features = params.features_velocity)
@@ -61,19 +62,18 @@ if __name__ == "__main__":
             model = params.FlowCls(velocity_model = velocity_model, features = params.features_flow)
             training_kwargs = dict(batch_size=params.batch_size, steps=params.steps_flow)
 
+    optimizer = torch.optim.Adam(model.parameters(), lr=params.lr_max)
     time_passed_init = 0.0
     if not args.new:
         serialized_state =  torch.load(state_path, weights_only=True)
         time_passed_init = serialized_state["time_passed"]
         model.load_state_dict(serialized_state["model"])
-        optimizer = torch.optim.Adam(model.parameters(), lr=params.lr_max)
         optimizer.load_state_dict(serialized_state["optimizer"])
         for g in optimizer.param_groups: g['lr'] = params.lr_max
         print(f"loaded serialized state {state_path}")
-
     
     lr_scheduler = CosineAnnealingLR(optimizer, T_max=500, eta_min=params.lr_min)
-    writer = SummaryWriter(params.runs_dir)
+    writer = SummaryWriter(f"{args.experiment}/runs")
     dataset_train = params.DatasetCls(mode = "train", **params.kwargs_dataset_cls)
     dataset_test  = params.DatasetCls(mode = "test" , **params.kwargs_dataset_cls)
     loss_print_decay = 0.99
@@ -97,7 +97,7 @@ if __name__ == "__main__":
         if ctr % 10 == 0:
             with torch.no_grad():
                 y1, x1 = next(iter(dataloader_test))
-                loss_test = model.compute_loss(y1, x1).item()
+                loss_test = model.compute_loss(y1, x1, ctr).item()
                 writer.add_scalars(f"loss_{args.modeltype}", { "train": loss_train, "test": loss_test}, ctr)
                 if ctr == 0:    loss_test_avg = loss_test
                 else:           loss_test_avg = loss_print_decay * loss_test_avg  + (1 - loss_print_decay) * loss_test
