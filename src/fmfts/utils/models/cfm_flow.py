@@ -10,8 +10,7 @@ class FlowModel(TimeSeriesModel):
         self.p0 = p0
         self.loss_fn = loss
 
-    
-    def phi(self, x, y, tx, v, delta):
+    def phi(self, x, y, tx, delta):
         raise NotImplementedError()
     
     def compute_loss(self, y1, x1, ctr, steps=2):
@@ -31,13 +30,6 @@ class FlowModel(TimeSeriesModel):
         elif self.loss_fn == "l2":      loss = ( F_multistep - F_single ).pow(2).mean() 
         elif self.loss_fn == "sobolev": loss = sobolev(F_multistep - F_single, alpha=1.0, beta=1.0, t=tx)
 
-        # elif self.loss_fn == "discriminator":
-        #     D_fake = self.D(F_single   , xt, y1, tx, delta)
-        #     D_true = self.D(F_multistep, xt, y1, tx, delta)
-        #     D_fake = 0.005 + 0.99*D_fake
-        #     D_true = 0.005 + 0.99*D_true
-        #     loss = torch.log(D_true).mean() + torch.log(1-D_fake).mean()
-
         return loss
     
     def forward(self, x, y, tx, delta):
@@ -46,8 +38,7 @@ class FlowModel(TimeSeriesModel):
 
         v = torch.no_grad(self.v)(x, y, tx)
         delta_ = delta.view(-1, *[1]*(x.dim()-1))
-        phi = self.phi(x, y, tx, v, delta)
-        # return x + delta_*v + delta_**2/2 * phi
+        phi = self.phi(x, y, tx, delta)
         return x + delta_*v + delta_**2 * (phi - v)
     
     def sample(self, y1, x0=None, steps=1):

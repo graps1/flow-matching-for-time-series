@@ -72,23 +72,23 @@ class UNet(nn.Module):
         self.first = ResNetBlock(in_channels, features[0], padding=padding, nl=self.nl, dims=dims)
         self.encoders = nn.ModuleList([
                 ResNetBlock(
-                    features[k], # 2**k*features, 
-                    features[k+1], # 2**(k+1)*features, 
+                    features[k],
+                    features[k+1],
                     padding=padding,
                     nl=self.nl,
                     dims=dims
                 ) 
                 for k in range(len(features)-1)])
         self.bottleneck = ResNetBlock(
-            features[-1], # 2**depth*features, 
-            features[-1], # 2**depth*features, 
+            features[-1],
+            features[-1],
             padding=padding,
             nl = self.nl, 
             dims=dims)
         self.decoders = nn.ModuleList([
             ResNetBlock(
-                2*features[k-1], # 2**k*features, 
-                features[k-1], # 2**(k-1)*features, 
+                2*features[k-1],
+                features[k-1],
                 padding=padding,
                 nl=self.nl,
                 dims=dims) 
@@ -97,8 +97,8 @@ class UNet(nn.Module):
             nn.Sequential(
                 nn.Upsample(scale_factor=tuple([2]*dims), mode="nearest"), # <- "bilinear" doesn't support 3d
                 ResNetBlock(
-                    features[k], # 2**k*features, 
-                    features[k-1], # 2**(k-1)*features, 
+                    features[k],
+                    features[k-1],
                     padding=padding,
                     nl=self.nl,
                     dims=dims)

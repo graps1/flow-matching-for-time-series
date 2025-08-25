@@ -10,7 +10,7 @@ class SingleStepModel(TimeSeriesModel):
         self.loss_fn = loss
         assert self.loss_fn in ["l2", "l1", "sobolev"], "loss must be either 'l2', 'l1' or 'sobolev'"
 
-    def phi(self, x0, y, v):
+    def phi(self, x0, y):
         raise NotImplementedError()
 
     def compute_loss(self, y1, x1, ctr, steps=10, method="midpoint"):
@@ -24,8 +24,7 @@ class SingleStepModel(TimeSeriesModel):
         return loss
     
     def forward(self, x0, y):
-        # v = torch.no_grad(self.v)(x0, y, torch.zeros(len(x0)))
-        phi = self.phi(x0, y, None)
+        phi = self.phi(x0, y)
         return x0 + phi
     
     def sample(self, y1, x0=None):
