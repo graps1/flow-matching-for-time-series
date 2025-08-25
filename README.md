@@ -1,3 +1,11 @@
+## Installation
+
+In the top level directory, run
+
+    pip install -e .
+
+this installs an editable version of this project.
+
 
 ## Directory structure
 
