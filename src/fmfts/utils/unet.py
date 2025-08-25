@@ -1,3 +1,4 @@
+import copy
 import torch
 import torch.nn as nn 
 import padding
@@ -54,7 +55,7 @@ class ResNetBlock(nn.Module):
         y = self.conv(x2)
         z = self.dc(x1)
         return y + z
-    
+
 class UNet(nn.Module):
     def __init__(self, 
                  in_channels=1, 
@@ -120,3 +121,25 @@ class UNet(nn.Module):
             x = self.nl(decoder(x))
         x = self.final(x)
         return x
+    
+    def clone_and_adapt(self, additional_in_channels):
+        cpy = copy.deepcopy(self)
+
+        l1 = self.first.dc.conv1
+        l1_ = type(l1)( l1.in_channels + additional_in_channels, l1.out_channels, 
+                        kernel_size=l1.kernel_size, 
+                        padding=l1.padding, 
+                        padding_mode=l1.padding_mode)
+        l1_.weight.data[:, :-additional_in_channels] = l1.weight.data
+        cpy.first.dc.conv1 = l1_
+        
+        l1 = self.first.conv
+        l1_ = type(l1)( l1.in_channels + additional_in_channels, l1.out_channels, 
+                        kernel_size=l1.kernel_size, 
+                        padding=l1.padding, 
+                        padding_mode=l1.padding_mode)
+        l1_.weight.data[:, :-additional_in_channels] = l1.weight.data
+        cpy.first.conv = l1_
+
+        return cpy
+

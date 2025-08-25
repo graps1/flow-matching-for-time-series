@@ -3,7 +3,7 @@ from fmfts.utils.models.time_series_model import TimeSeriesModel
 from fmfts.utils.loss_fn import sobolev
 
 class FlowModel(TimeSeriesModel):
-    def __init__(self, v, p0=torch.distributions.Normal(0,1), loss="sobolev"):
+    def __init__(self, v, p0=torch.distributions.Normal(0,1), loss="l2"):
         super().__init__()
         assert loss in ["l1", "l2", "sobolev"]
         self.v = v
@@ -19,8 +19,7 @@ class FlowModel(TimeSeriesModel):
         x0 = self.p0.sample(x1.shape).to(x1.device)
         delta = ( 1e-3+torch.rand(bs)*(1-1e-3) )**(1/2)
         tx = torch.rand(bs)*(1-delta)
-        tx_ = tx.view(-1, *[1]*(x1.dim()-1)) 
-        xt = (1 - tx_)*x0 + tx_*x1
+        xt = x0 + tx.view(-1, *[1]*(x1.dim()-1))*(x1 - x0)
 
         with torch.no_grad():
             F_multistep = xt 
@@ -40,24 +39,6 @@ class FlowModel(TimeSeriesModel):
         #     loss = torch.log(D_true).mean() + torch.log(1-D_fake).mean()
 
         return loss
-
-    # def minibatch_gradient_step(self, y1, x1, ctr, opt, steps=2):
-    #     loss = self.compute_loss(y1, x1, ctr, steps=steps)
-
-    #     opt.zero_grad()
-    #     loss.backward()
-    #     opt.step()
-
-    #     # if ctr % 10 == 0:
-    #     #     self.opt_phi.zero_grad()
-    #     #     loss.backward()
-    #     #     self.opt_phi.step()
-    #     # else:
-    #     #     self.opt_D.zero_grad()
-    #     #     loss.backward()
-    #     #     self.opt_D.step()
-
-    #     return loss.item()
     
     def forward(self, x, y, tx, delta):
         if not isinstance(delta, torch.Tensor): delta = torch.tensor(delta)
@@ -66,7 +47,8 @@ class FlowModel(TimeSeriesModel):
         v = torch.no_grad(self.v)(x, y, tx)
         delta_ = delta.view(-1, *[1]*(x.dim()-1))
         phi = self.phi(x, y, tx, v, delta)
-        return x + delta_*v + delta_**2/2 * phi
+        # return x + delta_*v + delta_**2/2 * phi
+        return x + delta_*v + delta_**2 * (phi - v)
     
     def sample(self, y1, x0=None, steps=1):
         if x0 is None: x0 = self.p0.sample(y1.shape).to(y1.device)

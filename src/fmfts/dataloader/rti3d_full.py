@@ -16,8 +16,23 @@ class DatasetFullRTI3D(Dataset):
         super().__init__()
         assert mode in ["train", "test"]
 
-        datapath = f"{os.path.dirname(os.path.abspath(__file__))}/../datasets/rti3d/{mode}/rayleigh_taylor_instability_At_{str(At)[2:]}.hdf5"
+
+        prefix = f"{os.path.dirname(os.path.abspath(__file__))}/../datasets/rti3d/{mode}" 
+        datapath = f"{prefix}/rayleigh_taylor_instability_At_{str(At)[2:]}.hdf5"
+        # self.use_compressed = False
+        # if (compression := dx) == dy and dy == dz:
+        #     datapath_compressed = f"{prefix}/rayleigh_taylor_instability_At_{str(At)[2:]}_compr_{compression}.pt"
+        #     if os.path.exists(datapath):
+        #         print(f"Using compressed dataset at {datapath_compressed}")
+        #         datapath = datapath_compressed
+        #         self.use_compressed = True
+
+        #         self.velocity_raw = torch.load(datapath, weights_only=True, map_location="cuda")[:,:,:,:,:,:3]
+        #         self.density_raw  = torch.load(datapath, weights_only=True, map_location="cuda")[:,:,:,:,:, 3]
+        #     else:
         f = h5py.File(datapath, "r")
+        self.velocity_raw = f["t1_fields"]["velocity"]
+        self.density_raw = f["t0_fields"]["density"]
 
         self.history = history
         self.dt = dt
@@ -25,8 +40,6 @@ class DatasetFullRTI3D(Dataset):
         self.dy = dy
         self.dz = dz
         self.max_time_idx = 119 - self.history*self.dt
-        self.velocity_raw = f["t1_fields"]["velocity"] # [:, :, :, ::self.dy, ::self.dz]).cuda()
-        self.density_raw = f["t0_fields"]["density"] # [:, :, :, ::self.dy, ::self.dz]).cuda()
         
         # taken from stats.yaml
         self.mean = torch.tensor([-6.0036E-06, -1.6880E-05, -4.4674E-06, 7.7363E-01])
@@ -54,6 +67,10 @@ class DatasetFullRTI3D(Dataset):
         return data*(std+1e-5) + mean
     
     def get(self, i0, i1, sequence_len=1):
+        # if self.use_compressed:
+        #     velocity = self.velocity_raw[i0, i1:i1+sequence_len*self.dt:self.dt]
+        #     density =   self.density_raw[i0, i1:i1+sequence_len*self.dt:self.dt]
+        # else:
         velocity = torch.tensor(self.velocity_raw[i0, i1:i1+sequence_len*self.dt:self.dt, ::self.dx, ::self.dy, ::self.dz])
         density =  torch.tensor( self.density_raw[i0, i1:i1+sequence_len*self.dt:self.dt, ::self.dx, ::self.dy, ::self.dz])
         velocity = velocity.permute(0, 4, 1, 2, 3) # <- shifts the channel to dim=1

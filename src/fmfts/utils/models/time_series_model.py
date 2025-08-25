@@ -6,9 +6,6 @@ class TimeSeriesModel(torch.nn.Module):
     def compute_loss(self, y1, x1, ctr, steps=2):
         raise NotImplementedError()
     
-    # def minibatch_gradient_step(self, y1, x1, ctr, opt, **kwargs):
-    #     raise NotImplementedError()
-    
     def forward(self, x, y, tx):
         raise NotImplementedError()
 
@@ -27,7 +24,6 @@ class TimeSeriesModel(torch.nn.Module):
             try:    y1, x1 = next(dataiter)
             except: y1, x1 = next(dataiter := iter(dataloader))
 
-            # loss = self.minibatch_gradient_step(y1, x1, ctr, opt, **kwargs)
             opt.zero_grad()
             loss = self.compute_loss(y1, x1, ctr, **kwargs)
             loss.backward()
