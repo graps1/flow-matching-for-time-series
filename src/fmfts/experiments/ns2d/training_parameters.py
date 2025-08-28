@@ -6,7 +6,7 @@ from fmfts.dataloader.ns2d import DatasetNS2D
 params = {
     "flow": {
         "model_kwargs": { 
-            "loss": "sobolev",
+            "loss": "l2",
         },
         "training_kwargs": {
             "batch_size": 4,
@@ -19,7 +19,7 @@ params = {
     "velocity": {
         "model_kwargs": {
             "features": (64, 96, 96, 128),
-            "loss": "sobolev",
+            "loss": "l2",
         },
         "training_kwargs": {
             "batch_size": 4,
@@ -30,7 +30,7 @@ params = {
     },
     "single_step": {
         "model_kwargs": { 
-            "loss": "sobolev",
+            "loss": "l2",
         },
         "training_kwargs": {
             "batch_size": 4,

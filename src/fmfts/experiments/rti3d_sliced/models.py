@@ -45,11 +45,12 @@ class SingleStepModelSlicedRTI3D(SingleStepModel):
                  p0=torch.distributions.Normal(0, 1), 
                  loss = "l2"):
         super().__init__(v=velocity_model, p0=p0, loss=loss)
-        self.phi_net = copy.deepcopy(velocity_model)
+        self.include_vertical_position = velocity_model.include_vertical_position
+        self.phi_net = copy.deepcopy(velocity_model.v_net)
 
     def phi(self, x0, y):
         bs, _, width, height = x0.shape
-        tx = torch.zeros(x0.shape[0], 1, x0.shape[1], x0.shape[2])
+        tx = torch.zeros(x0.shape[0], 1, x0.shape[2], x0.shape[3])
         z = torch.cat([x0, y, tx], dim=1)
 
         if self.include_vertical_position:
@@ -67,7 +68,7 @@ class FlowModelSlicedRTI3D(FlowModel):
                  loss = "l2"):
         super().__init__(v=velocity_model, p0=p0, loss=loss)
         self.include_vertical_position = velocity_model.include_vertical_position
-        self.phi_net = velocity_model.v_net.clone_and_adapt(additional_in_channels=1) 
+        self.phi_net = velocity_model.v_net.clone_and_adapt(additional_in_channels=1)
 
     def phi(self, x, y, tx, delta):
         bs, _, width, height = x.shape

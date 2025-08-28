@@ -24,14 +24,29 @@ class DoubleConv(nn.Module):
                  nl=nn.ReLU()):
         super().__init__()
         cls = [nn.Conv1d, nn.Conv2d, nn.Conv3d][dims-1]
+        # norm_cls = [nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d][dims-1]
         self.nl = nl 
         self.conv1 = cls(in_channels,  out_channels, 3, padding=padding, padding_mode=padding_mode)
-        self.conv2 = cls(out_channels, out_channels, 3, padding=padding, padding_mode=padding_mode)
+        # self.norm1 = norm_cls(in_channels)
+        self.conv2 = cls(out_channels,  out_channels, 3, padding=padding, padding_mode=padding_mode)
+        # self.norm2 = norm_cls(in_channels)
+        # self.conv3 = cls(in_channels,  in_channels, 3, padding=padding, padding_mode=padding_mode)
+        # self.norm3 = norm_cls(in_channels)
+        # self.conv4 = cls(in_channels, out_channels, 3, padding=padding, padding_mode=padding_mode)
+        # self.norm4 = norm_cls(in_channels)
 
     def forward(self, x):
+        # x = self.norm1(x)
         x = self.conv1(x)
         x = self.nl(x)
+        # x = self.norm2(x)
         x = self.conv2(x)
+        # x = self.nl(x)
+        # x = self.norm3(x)
+        # x = self.conv3(x)
+        # x = self.nl(x)
+        # x = self.norm4(x)
+        # x = self.conv4(x)
         return x
 
 class ResNetBlock(nn.Module):
@@ -52,6 +67,7 @@ class ResNetBlock(nn.Module):
         x1, x2 = x.clone(), x.clone()
         for pm, dim in zip(self.padding, range(self.dims)):
             x1 = padding.pad(x1, dim=2+dim, extent=2, padding_mode=pm)
+            # x1 = padding.pad(x1, dim=2+dim, extent=4, padding_mode=pm)
         y = self.conv(x2)
         z = self.dc(x1)
         return y + z
@@ -121,6 +137,7 @@ class UNet(nn.Module):
             x = self.nl(decoder(x))
         x = self.final(x)
         return x
+
     
     def clone_and_adapt(self, additional_in_channels):
         cpy = copy.deepcopy(self)

@@ -10,10 +10,10 @@ params = {
         },
         "training_kwargs": {
             "batch_size": 4,
-            "steps": 5,
+            "steps": 4,
         },
-        "lr_max": 5e-6,
-        "lr_min": 5e-6,
+        "lr_max": 1e-5,
+        "lr_min": 1e-5,
         "cls": FlowModelFullRTI3D,
     },
     "velocity": {
@@ -24,8 +24,8 @@ params = {
         "training_kwargs": {
             "batch_size": 4,
         },
-        "lr_max": 1e-5,
-        "lr_min": 5e-6,
+        "lr_max": 5e-5,
+        "lr_min": 5e-5,
         "cls": VelocityModelFullRTI3D
     },
     "single_step": {
@@ -34,11 +34,11 @@ params = {
         },
         "training_kwargs": {
             "batch_size": 4,
-            "steps": 5,
+            "steps": 10,
             "method": "midpoint"
         },
         "lr_max": 1e-5,
-        "lr_min": 5e-6,
+        "lr_min": 1e-5,
         "cls": SingleStepModelFullRTI3D
     },
     "dataset": {

@@ -79,7 +79,6 @@ if __name__ == "__main__":
     writer = SummaryWriter(f"{args.experiment}/runs")
     dataset_train = params["dataset"]["cls"](mode = "train", **params["dataset"]["kwargs"])
     dataset_test  = params["dataset"]["cls"](mode = "test" , **params["dataset"]["kwargs"])
-    loss_print_decay = 0.99
 
     dataloader_test = DataLoader(
         dataset_test, 
@@ -96,6 +95,7 @@ if __name__ == "__main__":
     # TRAINING LOOP
 
     for ctr, loss_train in enumerate(model.train_model(dataset_train, optimizer, **modelparams["training_kwargs"])):
+        loss_print_decay = min(1 - 1/(ctr+1), 0.999)
 
         if ctr % 10 == 0:
             with torch.no_grad():
