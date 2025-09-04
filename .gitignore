@@ -4,3 +4,5 @@ src/fmfts/datasets
 **/runs
 **/checkpoints
 *.pt
+# Local notes (ignored)
+/notes/

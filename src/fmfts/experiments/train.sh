@@ -23,4 +23,3 @@ source /mimer/NOBACKUP/groups/kthmech/abhvis/load_modules_v25.sh
 
 # Run DistributedDataParallel with torch.distributed.launch
 python trainer.py ns2d velocity_pd
-

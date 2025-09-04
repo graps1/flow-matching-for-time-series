@@ -29,6 +29,7 @@ if __name__ == "__main__":
     parser.add_argument("experiment", help=f"must be in {list(experiment2params.keys())}")
     parser.add_argument("modeltype", help=f"must be in {list(modeltypes)}")
     parser.add_argument("--new", help="creates and trains a new model", action="store_true")
+    parser.add_argument("--teacher", default=None, help="Path to teacher checkpoint (for velocity_pd). Overrides default if provided.")
 
     args = parser.parse_args()
     assert args.modeltype in modeltypes, f"modeltype must be in {list(modeltypes)}"
@@ -43,7 +44,11 @@ if __name__ == "__main__":
     print(f"creating new model: {'YES' if args.new else 'NO'}")
     state_dir = f"{args.experiment}/trained_models"
     state_path = f"{state_dir}/state_{args.modeltype}.pt"
-    print(state_path)
+    # Ensure output directories exist
+    os.makedirs(state_dir, exist_ok=True)
+    os.makedirs(f"{args.experiment}/checkpoints", exist_ok=True)
+    os.makedirs(f"{args.experiment}/runs", exist_ok=True)
+    #print(state_path)
             
     # initialize model
     model_kwargs = modelparams["model_kwargs"]
@@ -58,8 +63,13 @@ if __name__ == "__main__":
         
     if args.modeltype in ["flow", "single_step"]:
         model_kwargs |= {"velocity_model": velocity_model}
-    else:  
-        model_kwargs |= {"teacher": velocity_model}
+    else:
+        # Allow custom teacher checkpoint path via --teacher; otherwise use default
+        teacher1_path = args.teacher if args.teacher is not None else f"{state_dir}/state_velocity_teacher1.pt"
+        serialized_state_teacher1 = torch.load(teacher1_path, weights_only=True)
+        teacher = params["velocity"]["cls"](**params["velocity"]["model_kwargs"])
+        teacher.load_state_dict(serialized_state_teacher1['model'])
+        model_kwargs |= {"teacher": teacher}
     model = modelparams["cls"](**model_kwargs)
 
     # initialize optimizer
@@ -71,8 +81,11 @@ if __name__ == "__main__":
     if not args.new:
         serialized_state =  torch.load(state_path, weights_only=True)
         time_passed_init = serialized_state["time_passed"]
-        model.load_state_dict(serialized_state["model"])
-        optimizer.load_state_dict(serialized_state["optimizer"])
+        # For velocity_pd, checkpoints intentionally exclude teacher weights.
+        # Load non-strictly to avoid errors on missing teacher keys.
+        strict_load = args.modeltype != "velocity_pd"
+        model.load_state_dict(serialized_state["model"], strict=strict_load)
+        #optimizer.load_state_dict(serialized_state["optimizer"])
         ctr_init = serialized_state.get("tensorboard_ctr", 0)
         for g in optimizer.param_groups: 
             g['lr'] = modelparams["lr_max"]
@@ -131,9 +144,13 @@ if __name__ == "__main__":
         
         if ctr % 500 == 0: 
             timestamp = datetime.datetime.now().isoformat().split(".")[0].replace(":","_").replace("-","_")
-           
+            
+            #Only save student model (without teacher)
+            full_state_dict = model.state_dict()
+            student_state_dict = {k: v for k, v in full_state_dict.items() if not k.startswith("teacher_velocity.")}
+                    
             serialized_state = { 
-                "model": model.state_dict(),
+                "model": student_state_dict,
                 "optimizer": optimizer.state_dict(),
                 "time_passed": time_passed,
                 "tensorboard_ctr": ctr_init + ctr
