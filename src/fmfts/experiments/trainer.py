@@ -19,7 +19,7 @@ experiment2params = {
     "ns2d": ns2d_params,
     "ks2d": ks2d_params,
 }
-modeltypes = [ "velocity", "single_step", "flow" ]
+modeltypes = ["velocity", "single_step", "flow", "velocity_pd"]
 
 if __name__ == "__main__":
     torch.set_default_device("cuda")
@@ -47,7 +47,7 @@ if __name__ == "__main__":
             
     # initialize model
     model_kwargs = modelparams["model_kwargs"]
-    if args.modeltype in ["flow", "single_step"]:
+    if args.modeltype in ["flow", "single_step", "velocity_pd"]:
         state_velocity_path = f"{state_dir}/state_velocity.pt"
         try:    
             serialized_state_velocity = torch.load(state_velocity_path, weights_only=True)
@@ -55,7 +55,11 @@ if __name__ == "__main__":
             velocity_model.load_state_dict(serialized_state_velocity['model'])
         except: 
             raise Exception(f"couldn't load velocity model ({state_velocity_path})")
+        
+    if args.modeltype in ["flow", "single_step"]:
         model_kwargs |= {"velocity_model": velocity_model}
+    else:  
+        model_kwargs |= {"teacher": velocity_model}
     model = modelparams["cls"](**model_kwargs)
 
     # initialize optimizer

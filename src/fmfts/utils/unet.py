@@ -1,7 +1,7 @@
 import copy
 import torch
 import torch.nn as nn 
-import padding
+from fmfts.utils import padding
 
 class MaxPool(nn.Module):
     def __init__(self, *ks):
