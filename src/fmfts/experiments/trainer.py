@@ -30,6 +30,7 @@ if __name__ == "__main__":
     parser.add_argument("modeltype", help=f"must be in {list(modeltypes)}")
     parser.add_argument("--new", help="creates and trains a new model", action="store_true")
     parser.add_argument("--teacher", default=None, help="Path to teacher checkpoint (for velocity_pd). Overrides default if provided.")
+    parser.add_argument("--max-iters", type=int, default=None, help="Override max iterations for velocity_pd stage (takes precedence over training_parameters).")
 
     args = parser.parse_args()
     assert args.modeltype in modeltypes, f"modeltype must be in {list(modeltypes)}"
@@ -92,7 +93,14 @@ if __name__ == "__main__":
             g['initial_lr'] = modelparams["lr_max"]
         print(f"loaded serialized state {state_path}")
     
-    lr_scheduler = CosineAnnealingLR(optimizer, T_max=500, eta_min=modelparams["lr_min"])
+    # Determine PD stage length (only for velocity_pd) and set scheduler T_max accordingly
+    pd_max_iters = None
+    if args.modeltype == "velocity_pd":
+        pd_max_iters = modelparams.get("training_kwargs", {}).get("max_iters")
+        if args.max_iters is not None:
+            pd_max_iters = args.max_iters
+    T_max = pd_max_iters if pd_max_iters is not None else 500
+    lr_scheduler = CosineAnnealingLR(optimizer, T_max=T_max, eta_min=modelparams["lr_min"])
     writer = SummaryWriter(f"{args.experiment}/runs")
     dataset_train = params["dataset"]["cls"](mode = "train", **params["dataset"]["kwargs"])
     dataset_test  = params["dataset"]["cls"](mode = "test" , **params["dataset"]["kwargs"])
@@ -111,7 +119,6 @@ if __name__ == "__main__":
     starting_time = time.time()
 
     # TRAINING LOOP
-
     for ctr, loss_train in enumerate(model.train_model(dataset_train, optimizer, **modelparams["training_kwargs"])):
 
         if ctr % 10 == 0:
@@ -141,8 +148,26 @@ if __name__ == "__main__":
         })
 
         lr_scheduler.step()
+
+        # Stop only for velocity_pd if a max-iteration budget is specified
+        if pd_max_iters is not None and (ctr_init + ctr + 1) >= pd_max_iters:
+            # Final save on exit (student-only state)
+            full_state_dict = model.state_dict()
+            student_state_dict = {k: v for k, v in full_state_dict.items() if not k.startswith("teacher_velocity.")}
+            serialized_state = {
+                "model": student_state_dict,
+                "optimizer": optimizer.state_dict(),
+                "time_passed": time_passed,
+                "tensorboard_ctr": ctr_init + ctr + 1,
+            }
+            print(f"reached max iters ({pd_max_iters}); saving final checkpoint @ {state_path}")
+            torch.save(serialized_state, state_path)
+            timestamp = datetime.datetime.now().isoformat().split(".")[0].replace(":","_").replace("-","_")
+            print(f"saving final checkpoint @ {args.experiment}/checkpoints/state_{args.modeltype}_{timestamp}.pt")
+            torch.save(serialized_state, f"{args.experiment}/checkpoints/state_{args.modeltype}_{timestamp}.pt")
+            break
         
-        if ctr % 500 == 0: 
+        if ctr % 1000 == 0: 
             timestamp = datetime.datetime.now().isoformat().split(".")[0].replace(":","_").replace("-","_")
             
             #Only save student model (without teacher)

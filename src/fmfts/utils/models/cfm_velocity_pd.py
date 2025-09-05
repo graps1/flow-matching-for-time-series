@@ -43,6 +43,32 @@ def _rollout_velocity(model, x, y, t, delta, steps: int, method="midpoint"):
     return xk
 
 
+def uniform_delta_sampler(bs, device, delta_min: float = 1e-3):
+    """Sample Δ ~ Uniform(delta_min, 1), and t ~ Uniform(0, 1-Δ)."""
+    u = torch.rand(bs, device=device)
+    delta = delta_min + u * (1 - delta_min)
+    t = torch.rand(bs, device=device) * (1 - delta)
+    return delta, t
+
+
+def fixed_macrostep_sampler(bs, device, S: int = 4, jitter: float = 0.05, delta_min: float = 1e-3):
+    """Sample Δ around 1/S with small relative jitter, clamped to [delta_min, 1]."""
+    S = max(int(S), 1)
+    base = torch.full((bs,), 1.0 / S, device=device)
+    eps = (torch.rand(bs, device=device) - 0.5) * 2 * jitter * base
+    delta = (base + eps).clamp(delta_min, 1.0)
+    t = torch.rand(bs, device=device) * (1 - delta)
+    return delta, t
+
+
+def beta_delta_sampler(bs, device, alpha: float = 0.5, beta: float = 1.0, delta_min: float = 1e-3):
+    """Sample Δ using a Beta(alpha, beta) mapped to [delta_min, 1]. alpha<beta biases small Δ; alpha=beta=1 is uniform."""
+    beta_rv = torch.distributions.Beta(alpha, beta).sample((bs,)).to(device)
+    delta = delta_min + beta_rv * (1 - delta_min)
+    t = torch.rand(bs, device=device) * (1 - delta)
+    return delta, t
+
+
 class DistilledVelocityMixin(TimeSeriesModel):
     """
     Mixin that replaces `compute_loss` with a progressive-distillation loss for a VelocityModel.
@@ -57,7 +83,8 @@ class DistilledVelocityMixin(TimeSeriesModel):
         assert method in ["euler", "midpoint", "rk4"]
         self._pd_K = K
         self._pd_method = method
-        self._delta_sampler = delta_sampler if delta_sampler is not None else self.default_delta_sampler
+        # Default to uniform sampler unless a custom sampler is provided
+        self._delta_sampler = delta_sampler if delta_sampler is not None else uniform_delta_sampler
         self._log_delta_t = log_delta_t
 
     def set_teacher(self, new_teacher):
@@ -76,8 +103,8 @@ class DistilledVelocityMixin(TimeSeriesModel):
 
     @staticmethod
     def default_delta_sampler(bs, device):
-        # Default: bias towards small delta as before
-        delta = (1e-3 + torch.rand(bs, device=device)*(1-1e-3))**(1/2)
+        # Deprecated: previously biased small-Δ sampler. Kept for backward reference.
+        delta = (1e-3 + torch.rand(bs, device=device) * (1 - 1e-3)) ** (1 / 2)
         t = torch.rand(bs, device=device) * (1 - delta)
         return delta, t
 

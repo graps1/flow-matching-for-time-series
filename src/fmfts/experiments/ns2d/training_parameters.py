@@ -5,6 +5,7 @@ from fmfts.experiments.ns2d.models import (
     VelocityPDNS2D,  
 )
 from fmfts.dataloader.ns2d import DatasetNS2D
+from fmfts.utils.models.cfm_velocity_pd import uniform_delta_sampler, fixed_macrostep_sampler, beta_delta_sampler
 
 params = {
     "flow": {
@@ -49,13 +50,33 @@ params = {
         "model_kwargs": {
             "features": (64, 96, 96, 128),
             "loss": "l2",
+            "K": 2,
+            # Use uniform Δ sampler by default for PD (can be overridden per stage)
+            "delta_sampler": beta_delta_sampler, #by default uniform_sampler
         },
         "lr_max": 2e-4,
         "lr_min": 1e-5,
-        "training_kwargs": {},  # anything extra you pass to compute_loss
+        # Training-only controls for PD (not passed to the optimizer directly)
+        # Note: train loop will read max_iters only for velocity_pd and stop after this many steps.
+        "training_kwargs": {
+            "max_iters": 10000,
+        },
+    },
+
+    # Multistage PD orchestration defaults (used by multistage_pd.py)
+    "multistage_pd": {
+        "modeltype": "velocity_pd",
+        # Number of PD stages to run
+        "stages": 5,
+        # Iterations per stage; if a single int is provided, it applies to all stages
+        "stage_iters": [100000, 100000, 100000, 100000, 100000],
+        # Initial teacher checkpoint filename (relative to experiments/ns2d/trained_models)
+        # Typically the base velocity model trained earlier
+        "initial_teacher": "state_velocity_teacher1.pt",
     },
     "dataset": {
         "cls": DatasetNS2D,
         "kwargs": {},
     },
+
 }

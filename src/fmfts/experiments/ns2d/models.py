@@ -51,7 +51,16 @@ class VelocityPDNS2D(DistilledVelocityMixin, VelocityModelNS2D):
         p0: torch.distributions.Distribution = torch.distributions.Normal(0, 1),
         features=(64, 96, 128),
         loss: str = "l2",
+        delta_sampler=None,              # optional custom sampler for (delta, t)
+        log_delta_t: bool = False,
     ):
 
         VelocityModelNS2D.__init__(self, p0=p0, features=features, loss=loss)
-        DistilledVelocityMixin.__init__(self, teacher_velocity=teacher, K=K, method=method)
+        DistilledVelocityMixin.__init__(
+            self,
+            teacher_velocity=teacher,
+            K=K,
+            method=method,
+            delta_sampler=delta_sampler,
+            log_delta_t=log_delta_t,
+        )

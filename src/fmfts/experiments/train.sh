@@ -1,7 +1,7 @@
 #!/usr/bin/env bash  
 #SBATCH -A NAISS2025-5-327 -p alvis # project name, cluster name, kth mech project :NAISS2023-3-30, NAISS2025-5-327, NAISS2025-5-144
 #SBATCH -N 1 --gpus-per-node=A40:1
-#SBATCH -t 0-23:00:00 # time
+#SBATCH -t 4-23:00:00 # time
 #SBATCH -J trn-distil
 #SBATCH -o train.out
 
@@ -22,4 +22,5 @@ module purge
 source /mimer/NOBACKUP/groups/kthmech/abhvis/load_modules_v25.sh
 
 # Run DistributedDataParallel with torch.distributed.launch
-python trainer.py ns2d velocity_pd
+#python trainer.py ns2d velocity_pd
+python multistage_pd.py ns2d 
