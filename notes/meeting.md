@@ -46,25 +46,26 @@ Note: This top section is a living, tracked guide for onboarding and structure.
  - Sample $\Delta \in (0,1]$, $t \sim U[0,1-\Delta]$, construct $x_t$ as above.
 - Teacher rollout (no grad):
 
-  $$
-  x\_T = rollout\_K(v\_T, x\_t, y, t, \Delta)
-  $$
+$$
+x\_T = \mathrm{rollout}_K(v\_T, x\_t, y, t, \Delta)
+$$
 
-  K steps of $$\Delta/K$$.
-  $$
+
+K steps of $\Delta/K$.
 
 - Student macro step:
 
-  $$
-  x\_S = step\_1(v\_S, x\_t, y, t, \Delta).
-  $$
+$$
+x\_S = \mathrm{step}_1(v\_S, x\_t, y, t, \Delta)
+$$
 
 - Losses:
 
-  $$
-  L\_{L2} = \| x\_T - x\_S \|\_2^2, \quad
-  L\_{Sob} = \alpha \| e \|\_2^2 + \beta \| grad\; e \|\_2^2,\; e = x\_T - x\_S.
-  $$
+$$
+L\_{L2} = \| x\_T - x\_S \|_2^2,\quad
+L\_{Sob} = \alpha \| e \|_2^2 + \beta \| \mathrm{grad}\; e \|_2^2,\; e = x\_T - x\_S
+$$
+
 
 - Outcome: a student that advances by macro increments with fewer inference steps.
 
@@ -72,67 +73,71 @@ Note: This top section is a living, tracked guide for onboarding and structure.
  - Aim: learn a flow map $F\_\delta(x\_t, t)$ that obeys three properties: identity ($F\_0(x\_t,t)=x\_t$), velocity consistency ($\frac{\partial}{\partial \delta}F\_\delta|_{\delta=0}=v\_t$), and semigroup ($F\_{a+b}=F\_a\circ F\_b$ with time shift).
 - Parameterization (Euler baseline + $\delta^2$ correction):
 
-  $$
-  F\_\delta^{\xi}(x\_t, t) = x\_t + \delta\, v\_t(x\_t) + \delta^2\,(\phi\_\delta^{\xi}(x\_t, t) - v\_t(x\_t)).
-  $$
+$$
+F\_\delta^{\xi}(x\_t, t) = x\_t + \delta\, v\_t(x\_t) + \delta^2\,(\phi\_\delta^{\xi}(x\_t, t) - v\_t(x\_t))
+$$
 
 - Semigroup-consistency objective with stop-grad on the RHS target:
 
-  $$
-  \min_{\xi}\; E[\, \| F\_\delta^{\xi}(x\_t, t) - sg(F\_{\delta/2}^{\xi}(F\_{\delta/2}^{\xi}(x\_t, t),\, t+\frac{\delta}{2})) \|\_2^2 \,].
-  $$
+$$
+\min\_{\xi}\; E\big[\, \| F\_\delta^{\xi}(x\_t, t) - \mathrm{sg}(F\_{\delta/2}^{\xi}(F\_{\delta/2}^{\xi}(x\_t, t),\, t+\frac{\delta}{2})) \|_2^2 \,\big]
+$$
 
-  Flow-map properties and why they matter (with equations):
+Flow-map properties and why they matter (with equations):
 
-  1) Identity at zero increment
+1) Identity at zero increment
 
-  $$
-  F\_0(x\_t, t) = x\_t.
-  $$
+$$
+F\_0(x\_t, t) = x\_t
+$$
 
-  Advancing by zero time changes nothing. Our parameterization enforces this exactly since plugging $\delta=0$ into
+Advancing by zero time changes nothing. Our parameterization enforces this exactly since plugging $\delta=0$ into
 
-  $$
-  F\_\delta^{\xi}(x\_t, t) = x\_t + \delta\, v\_t(x\_t) + \delta^2 (\phi\_\delta^{\xi}(x\_t, t) - v\_t(x\_t))
-  $$
+$$
+F\_\delta^{\xi}(x\_t, t) = x\_t + \delta\, v\_t(x\_t) + \delta^2\,(\phi\_\delta^{\xi}(x\_t, t) - v\_t(x\_t))
+$$
 
-  yields $F_0^{\xi}(\bm x_t, t) = \bm x_t$.
+yields $F\_0^{\xi}(x\_t, t) = x\_t$.
 
-  2) Consistency with the velocity (local correctness)
+2) Consistency with the velocity (local correctness)
 
-  $$
-  \left. \frac{\partial}{\partial \delta} F\_\delta(x\_t, t) \right|_{\delta=0} = v\_t(x\_t).
-  $$
+$$
+\left. \frac{\partial}{\partial \delta} F\_\delta(x\_t, t) \right|_{\delta=0} = v\_t(x\_t)
+$$
 
-  For the true ODE solution $x(t)$ with $\dot{x}(t) = v\_t(x(t))$ and $F\_\delta(x\_t,t)=x(t+\delta)$, the derivative at $\delta=0$ equals $\dot{x}(t)$. Our parameterization matches this to first order: differentiating $F\_\delta^{\xi}$ at $\delta=0$ gives
 
-  $$
-  \left.\frac{\partial}{\partial \delta} F\_\delta^{\xi}(x\_t, t)\right|_{\delta=0} = v\_t(x\_t),
-  $$
+For the true ODE solution $x(t)$ with $\dot{x}(t) = v\_t(x(t))$ and $F\_\delta(x\_t,t) = x(t+\delta)$, the derivative at $\delta=0$ equals $\dot{x}(t)$. Our parameterization matches this to first order: differentiating $F\_\delta^{\xi}$ at $\delta=0$ gives
 
-  because the $\delta^2$ term vanishes at first order.
+$$
+\left. \frac{\partial}{\partial \delta} F\_\delta^{\xi}(x\_t, t) \right|_{\delta = 0} = v\_t(x\_t)
+$$
 
-  3) Semigroup (composition) property with time shift
+because the $\delta^2$ term vanishes at first order.
 
-  $$
-  F\_{a+b}(x\_t, t) = F\_a( F\_b(x\_t, t),\, t+b ), \quad a,b \in \mathbb R.
-  $$
+3) Semigroup (composition) property with time shift
 
-  Meaning: advancing by $b$ then by $a$ equals a single advance by $a+b$, provided the second map starts at time $t+b$. For the true ODE flow this holds under standard well-posedness (e.g., Lipschitz $v_t$). Our semigroup loss is a practical enforcement of this law for the learned $F^{\xi}$.
+$$
+F\_{a+b}(x\_t, t) = F\_a( F\_b(x\_t, t),\, t + b ), \quad a, b \in \mathbb{R}
+$$
 
-  Useful corollaries and limits:
-  - Associativity across multiple steps follows from the semigroup law with appropriate time shifts.
-  - Invertibility for small $\delta$ in well-posed regimes: $F\_{-\delta}(F\_{\delta}(x\_t, t),\, t+\delta) = x\_t$.
-  - Small-step expansion recovers the velocity: $F\_\delta(x\_t, t) = x\_t + \delta\, v\_t(x\_t) + O(\delta^2)$.
+Meaning: advancing by $b$ then by $a$ equals a single advance by $a+b$, provided the second map starts at time $t + b$. For the true ODE flow this holds under standard well-posedness (e.g., Lipschitz $v\_t$). Our semigroup loss is a practical enforcement of this law for the learned $F^{\xi}$.
 
-  - Outcome: a one-step flow operator consistent across compositions, approximating the teacher’s integrated dynamics.
+Useful corollaries and limits:
+- Associativity across multiple steps follows from the semigroup law with appropriate time shifts.
+- Invertibility for small $\delta$ in well-posed regimes: $F\_{- \delta}(F\_\delta(x\_t, t),\, t + \delta) = x\_t$.
+- Small-step expansion recovers the velocity: $F\_\delta(x\_t, t) = x\_t + \delta\, v\_t(x\_t) + O(\delta^2)$.
+
+- Outcome: a one-step flow operator consistent across compositions, approximating the teacher’s integrated dynamics.
+
 
 ### Sobolev Loss (Sharper Fields)
 - Weighted Sobolev norm to emphasize gradients:
 
-  $$
-  \| u \|\_S^2 = \alpha \| u \|\_2^2 + \beta \| grad\; u \|\_2^2.
-  $$
+$$
+\| u \|_S^2 = \alpha \| u \|_2^2 + \beta \| \mathrm{grad}\; u \|_2^2
+$$
+
+
 
 - Use in FM and/or PD objectives to penalize gradient mismatches that appear as blur.
 
