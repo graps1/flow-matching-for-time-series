@@ -9,3 +9,4 @@ src/fmfts/datasets
 # allowing the exception to work.
 notes/*
 !notes/meeting.md
+*.out
