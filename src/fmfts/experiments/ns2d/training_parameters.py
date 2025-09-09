@@ -67,9 +67,9 @@ params = {
     "multistage_pd": {
         "modeltype": "velocity_pd",
         # Number of PD stages to run
-        "stages": 5,
+        "stages": 3,
         # Iterations per stage; if a single int is provided, it applies to all stages
-        "stage_iters": [100000, 100000, 100000, 100000, 100000],
+        "stage_iters": [50000, 50000, 50000],
         # Initial teacher checkpoint filename (relative to experiments/ns2d/trained_models)
         # Typically the base velocity model trained earlier
         "initial_teacher": "state_velocity_teacher1.pt",

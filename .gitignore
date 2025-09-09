@@ -6,3 +6,4 @@ src/fmfts/datasets
 *.pt
 # Local notes (ignored)
 /notes/
+!/notes/meeting.md

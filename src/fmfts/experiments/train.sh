@@ -1,6 +1,6 @@
 #!/usr/bin/env bash  
 #SBATCH -A NAISS2025-5-327 -p alvis # project name, cluster name, kth mech project :NAISS2023-3-30, NAISS2025-5-327, NAISS2025-5-144
-#SBATCH -N 1 --gpus-per-node=A40:1
+#SBATCH -N 1 --gpus-per-node=A100:1
 #SBATCH -t 4-23:00:00 # time
 #SBATCH -J trn-distil
 #SBATCH -o train.out

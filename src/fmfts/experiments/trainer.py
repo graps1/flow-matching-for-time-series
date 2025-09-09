@@ -125,12 +125,20 @@ if __name__ == "__main__":
             with torch.no_grad():
                 y1, x1 = next(iter(dataloader_test))
                 loss_test = model.compute_loss(y1, x1, ctr).item()
-                writer.add_scalars(f"loss_{args.modeltype}", { "train": loss_train, "test": loss_test}, ctr_init + ctr)
+                # Log numeric values only to avoid retaining graphs
+                writer.add_scalars(
+                    f"loss_{args.modeltype}",
+                    {"train": float(loss_train), "test": loss_test},
+                    ctr_init + ctr,
+                )
                 if ctr == 0:    loss_test_avg = loss_test
                 else:           loss_test_avg = loss_print_decay * loss_test_avg  + (1 - loss_print_decay) * loss_test
             
-        if ctr == 0:    loss_train_avg = loss_train
-        else:           loss_train_avg = loss_print_decay * loss_train_avg + (1 - loss_print_decay) * loss_train
+        # Keep moving average as a Python float to avoid autograd graph retention
+        if ctr == 0:
+            loss_train_avg = float(loss_train)
+        else:
+            loss_train_avg = loss_print_decay * loss_train_avg + (1 - loss_print_decay) * float(loss_train)
 
         time_passed = time_passed_init + (time.time() - starting_time)
         seconds = int(time_passed) % 60
@@ -167,7 +175,7 @@ if __name__ == "__main__":
             torch.save(serialized_state, f"{args.experiment}/checkpoints/state_{args.modeltype}_{timestamp}.pt")
             break
         
-        if ctr % 1000 == 0: 
+        if ctr % 10000 == 0: 
             timestamp = datetime.datetime.now().isoformat().split(".")[0].replace(":","_").replace("-","_")
             
             #Only save student model (without teacher)
