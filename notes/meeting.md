@@ -20,23 +20,23 @@ Note: This top section is a living, tracked guide for onboarding and structure.
 - Remedies: Distillation to collapse many steps into one; Sobolev losses to preserve sharp structures.
 
 ### Preliminaries (Notation and FM Objectives)
- - Bridging state with prior and target: with $x_0 \sim p_0$, $x_1 \sim p_1$, $t \sim U[0,1]$,
+ - Bridging state with prior and target: with $x\_0 \sim p\_0$, $x\_1 \sim p\_1$, $t \sim U[0,1]$,
 
   $$
-  x_t = t\, x_1 + (1-t)\, x_0.
+  x\_t = t\, x\_1 + (1-t)\, x\_0.
   $$
 
- - Flow Matching (FM): learn a velocity field $v_\theta$ by
+ - Flow Matching (FM): learn a velocity field $v\_\theta$ by
 
   $$
-  \min_{\theta} \; E[\, \| v_\theta(x_t, t) - (x_1 - x_0) \|_2^2 \,],
-  \quad \frac{dx}{dt} = v_\theta(x, t),\; t \in [0,1].
+  \min_{\theta} \; E[\, \| v\_\theta(x\_t, t) - (x\_1 - x\_0) \|\_2^2 \,],
+  \quad \frac{dx}{dt} = v\_\theta(x, t),\; t \in [0,1].
   $$
 
- - Conditional FM (CFM) for time series: condition on previous state $y = x_1^-$ to predict next $x_1^+$; with $x_t = t\, x_1^+ + (1-t)\, x_0$,
+ - Conditional FM (CFM) for time series: condition on previous state $y = x\_1^-$ to predict next $x\_1^+$; with $x\_t = t\, x\_1^+ + (1-t)\, x\_0$,
 
   $$
-  \min_{\theta} \; E[\, \| v_\theta(x_t, y, t) - (x_1^+ - x_0) \|_2^2 \,].
+  \min_{\theta} \; E[\, \| v\_\theta(x\_t, y, t) - (x\_1^+ - x\_0) \|\_2^2 \,].
   $$
 
 ### Distillation Methods (Two Paths)
@@ -47,36 +47,39 @@ Note: This top section is a living, tracked guide for onboarding and structure.
 - Teacher rollout (no grad):
 
   $$
-  x_T = rollout_K(v_T, x_t, y, t, \Delta) (K steps of \Delta/K).
+  x\_T = rollout\_K(v\_T, x\_t, y, t, \Delta)
+  $$
+
+  K steps of $$\Delta/K$$.
   $$
 
 - Student macro step:
 
   $$
-  x_S = step_1(v_S, x_t, y, t, \Delta).
+  x\_S = step\_1(v\_S, x\_t, y, t, \Delta).
   $$
 
 - Losses:
 
   $$
-  L_{L2} = \| x_T - x_S \|_2^2, \quad
-  L_{Sob} = \alpha \| e \|_2^2 + \beta \| \nabla e \|_2^2,\; e = x_T - x_S.
+  L\_{L2} = \| x\_T - x\_S \|\_2^2, \quad
+  L\_{Sob} = \alpha \| e \|\_2^2 + \beta \| grad\; e \|\_2^2,\; e = x\_T - x\_S.
   $$
 
 - Outcome: a student that advances by macro increments with fewer inference steps.
 
-2) Flow-level (Semigroup) Distillation (learn $F_\delta$ directly)
- - Aim: learn a flow map $F_\delta(x_t, t)$ that obeys three properties: identity ($F_0(x_t,t)=x_t$), velocity consistency ($\frac{\partial}{\partial \delta}F_\delta|_{\delta=0}=v_t$), and semigroup ($F_{a+b}=F_a\circ F_b$ with time shift).
+2) Flow-level (Semigroup) Distillation (learn $F\_\delta$ directly)
+ - Aim: learn a flow map $F\_\delta(x\_t, t)$ that obeys three properties: identity ($F\_0(x\_t,t)=x\_t$), velocity consistency ($\frac{\partial}{\partial \delta}F\_\delta|_{\delta=0}=v\_t$), and semigroup ($F\_{a+b}=F\_a\circ F\_b$ with time shift).
 - Parameterization (Euler baseline + $\delta^2$ correction):
 
   $$
-  F_\delta^{\xi}(x_t, t) = x_t + \delta\, v_t(x_t) + \delta^2\,(\phi_\delta^{\xi}(x_t, t) - v_t(x_t)).
+  F\_\delta^{\xi}(x\_t, t) = x\_t + \delta\, v\_t(x\_t) + \delta^2\,(\phi\_\delta^{\xi}(x\_t, t) - v\_t(x\_t)).
   $$
 
 - Semigroup-consistency objective with stop-grad on the RHS target:
 
   $$
-  \min_{\xi}\; E[\, \| F_\delta^{\xi}(x_t, t) - sg(F_{\delta/2}^{\xi}(F_{\delta/2}^{\xi}(x_t, t),\, t+\frac{\delta}{2})) \|_2^2 \,].
+  \min_{\xi}\; E[\, \| F\_\delta^{\xi}(x\_t, t) - sg(F\_{\delta/2}^{\xi}(F\_{\delta/2}^{\xi}(x\_t, t),\, t+\frac{\delta}{2})) \|\_2^2 \,].
   $$
 
   Flow-map properties and why they matter (with equations):
@@ -84,13 +87,13 @@ Note: This top section is a living, tracked guide for onboarding and structure.
   1) Identity at zero increment
 
   $$
-  F_0(x_t, t) = x_t.
+  F\_0(x\_t, t) = x\_t.
   $$
 
   Advancing by zero time changes nothing. Our parameterization enforces this exactly since plugging $\delta=0$ into
 
   $$
-  F_\delta^{\xi}(x_t, t) = x_t + \delta\, v_t(x_t) + \delta^2 (\phi_\delta^{\xi}(x_t, t) - v_t(x_t))
+  F\_\delta^{\xi}(x\_t, t) = x\_t + \delta\, v\_t(x\_t) + \delta^2 (\phi\_\delta^{\xi}(x\_t, t) - v\_t(x\_t))
   $$
 
   yields $F_0^{\xi}(\bm x_t, t) = \bm x_t$.
@@ -98,13 +101,13 @@ Note: This top section is a living, tracked guide for onboarding and structure.
   2) Consistency with the velocity (local correctness)
 
   $$
-  \left. \frac{\partial}{\partial \delta} F_\delta(x_t, t) \right|_{\delta=0} = v_t(x_t).
+  \left. \frac{\partial}{\partial \delta} F\_\delta(x\_t, t) \right|_{\delta=0} = v\_t(x\_t).
   $$
 
-  For the true ODE solution $x(t)$ with $\dot{x}(t) = v_t(x(t))$ and $F_\delta(x_t,t)=x(t+\delta)$, the derivative at $\delta=0$ equals $\dot{x}(t)$. Our parameterization matches this to first order: differentiating $F_\delta^{\xi}$ at $\delta=0$ gives
+  For the true ODE solution $x(t)$ with $\dot{x}(t) = v\_t(x(t))$ and $F\_\delta(x\_t,t)=x(t+\delta)$, the derivative at $\delta=0$ equals $\dot{x}(t)$. Our parameterization matches this to first order: differentiating $F\_\delta^{\xi}$ at $\delta=0$ gives
 
   $$
-  \left.\frac{\partial}{\partial \delta} F_\delta^{\xi}(x_t, t)\right|_{\delta=0} = v_t(x_t),
+  \left.\frac{\partial}{\partial \delta} F\_\delta^{\xi}(x\_t, t)\right|_{\delta=0} = v\_t(x\_t),
   $$
 
   because the $\delta^2$ term vanishes at first order.
@@ -112,15 +115,15 @@ Note: This top section is a living, tracked guide for onboarding and structure.
   3) Semigroup (composition) property with time shift
 
   $$
-  F_{a+b}(x_t, t) = F_a( F_b(x_t, t),\, t+b ), \quad a,b \in \mathbb R.
+  F\_{a+b}(x\_t, t) = F\_a( F\_b(x\_t, t),\, t+b ), \quad a,b \in \mathbb R.
   $$
 
   Meaning: advancing by $b$ then by $a$ equals a single advance by $a+b$, provided the second map starts at time $t+b$. For the true ODE flow this holds under standard well-posedness (e.g., Lipschitz $v_t$). Our semigroup loss is a practical enforcement of this law for the learned $F^{\xi}$.
 
   Useful corollaries and limits:
   - Associativity across multiple steps follows from the semigroup law with appropriate time shifts.
-  - Invertibility for small $\delta$ in well-posed regimes: $F_{-\delta}(F_{\delta}(x_t, t),\, t+\delta) = x_t$.
-  - Small-step expansion recovers the velocity: $F_\delta(x_t, t) = x_t + \delta\, v_t(x_t) + O(\delta^2)$.
+  - Invertibility for small $\delta$ in well-posed regimes: $F\_{-\delta}(F\_{\delta}(x\_t, t),\, t+\delta) = x\_t$.
+  - Small-step expansion recovers the velocity: $F\_\delta(x\_t, t) = x\_t + \delta\, v\_t(x\_t) + O(\delta^2)$.
 
   - Outcome: a one-step flow operator consistent across compositions, approximating the teacher’s integrated dynamics.
 
@@ -128,13 +131,13 @@ Note: This top section is a living, tracked guide for onboarding and structure.
 - Weighted Sobolev norm to emphasize gradients:
 
   $$
-  \| u \|_S^2 = \alpha \| u \|_2^2 + \beta \| \nabla u \|_2^2.
+  \| u \|\_S^2 = \alpha \| u \|\_2^2 + \beta \| grad\; u \|\_2^2.
   $$
 
 - Use in FM and/or PD objectives to penalize gradient mismatches that appear as blur.
 
 ### Practical Notes (How We Train)
- - Schedules: cosine annealing with $T_{max}$ equal to the PD stage iteration budget (one LR cycle per stage).
+ - Schedules: cosine annealing with $T\_{max}$ equal to the PD stage iteration budget (one LR cycle per stage).
 - Checkpoints: save student-only weights; resume PD with non-strict loading and a separately provided teacher.
  - Sampling: choose $\Delta$ from uniform, beta-shaped, or fixed macro steps with jitter; set $t\sim U[0,1-\Delta]$.
 - Efficiency: teacher forward is no-grad; batch size can be increased to use GPU memory without affecting teacher correctness.

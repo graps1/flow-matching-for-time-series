@@ -23,6 +23,14 @@
       "stage_student_copy": "ns2d/trained_models/stage_2_student.pt",
       "iters": 50000,
       "time_elapsed": 3156.802397251129
+    },
+    {
+      "stage": 3,
+      "teacher": "ns2d/trained_models/state_velocity_pd.pt",
+      "student": "ns2d/trained_models/state_velocity_pd.pt",
+      "stage_student_copy": "ns2d/trained_models/stage_3_student.pt",
+      "iters": 50000,
+      "time_elapsed": 3180.6998076438904
     }
   ],
   "timestamp": "2025-09-09T16:59:43"
