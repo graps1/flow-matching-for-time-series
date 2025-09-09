@@ -5,29 +5,139 @@ Note: This top section is a living, tracked guide for onboarding and structure.
 ## Overview
 - Problem: Surrogate modeling for fluid systems using flow matching and progressive distillation to accelerate inference while maintaining fidelity.
 - Goals: Fast, high-quality next-state prediction; reduce solver steps via distillation; mitigate blurriness using Sobolev losses.
+- Contributions:
+  - Novel distillation method to directly learn macro-step evolution for faster generation.
+  - Physics-informed Sobolev loss to reduce blur in fluid fields.
 
 ## Theory
-- Flow Matching (FM): Learn a time-conditioned velocity field that transports samples from an easy prior p0 to a target p1 along straight bridging paths. With x0 ~ p0, x1 ~ p1, and t ~ U[0,1], define x_t = t x1 + (1 - t) x0. Train
-  - min_θ E[ || v_θ(x_t, t) - (x1 - x0) ||^2 ]
-  - Prediction solves the ODE dx/dt = v_θ(x, t) from t=0 to 1; in deterministic regimes, few steps may suffice.
-- Conditional FM (CFM) for time series: Given previous state y = x1^- and next state x1^+ from the same trajectory, condition the velocity on y:
-  - min_θ E[ || v_θ(x_t, y, t) - (x1^+ - x0) ||^2 ] where x_t = t x1^+ + (1 - t) x0.
-- Progressive Distillation (PD): Compress K fine ODE steps of a frozen teacher into one macro step of a student.
-  - Sample Δ ∈ [0,1], t ∈ [0, 1-Δ], and form x_t as above using p0 and x1.
-  - Teacher rollout: x_T = rollout_K(v_T, x_t, y, t, Δ) via K fine steps of size Δ/K (no grad, teacher frozen).
-  - Student step: x_S = step_1(v_S, x_t, y, t, Δ) using one macro step with the student velocity.
-  - Loss (L2): L = || x_T - x_S ||^2. Optionally use Sobolev: L_S = α ||e||_2^2 + β ||∇e||_2^2 with e = x_T - x_S.
-  - Intuition: The student learns to match the teacher’s flow over macro increments, enabling fewer inference steps.
-- Flow-level distillation (semigroup alternative): Parameterize a flow map F_δ(x_t, t) with Euler baseline plus δ^2 correction and enforce semigroup consistency.
-  - F_δ^ξ(x_t, t) = x_t + δ v_t(x_t) + δ^2 (φ_δ^ξ(x_t, t) - v_t(x_t)).
-  - Semigroup loss: min_ξ E[ || F_δ^ξ(x_t, t) - sg( F_{δ/2}^ξ( F_{δ/2}^ξ( x_t, t ), t + δ/2 ) ) ||^2 ].
-  - Relation to PD: PD distills a velocity’s macro step via rollout matching; semigroup distillation directly learns consistent flow maps F.
-- Sobolev loss for deblurring: Define weighted Sobolev norm
-  - ||u||_S^2 = α ||u||_2^2 + β ||∇u||_2^2, with optional time-dependent weights α(t), β(t).
-  - Apply in FM training and/or PD matching objective to penalize gradient mismatches that manifest as blur in fluid fields.
-- Schedules and budgets: Use cosine annealing with T_max equal to the PD stage iteration budget to complete one LR cycle per stage. Stage termination saves student-only checkpoints; teacher weights are never trained.
-- Checkpoint structure and resume: PD checkpoints contain student weights only (e.g., keys not starting with teacher_velocity.*). Resume PD with non-strict loading; provide a teacher checkpoint separately.
-- Δ, t sampling: Δ sampled from uniform, beta-shaped, or fixed-macro-step with jitter; t sampled uniformly on [0, 1-Δ]. Design samplers to balance coverage and match intended inference step sizes.
+
+### Main Argument (Why and What)
+- Flow Matching (and diffusion) is well-suited to partially observed dynamical systems: it can plausibly fill in missing information and produce realistic successors.
+- Deterministic regimes are, in principle, “straight-path” transports; a single explicit Euler step could suffice if the learned velocity exactly matches the ground truth.
+- Practical issues that motivate our methods:
+  1) Stochasticity and modeling error require multiple solver steps, reducing throughput versus single-step surrogates.
+  2) L2 training often yields blurry fields; sharp fluid features are penalized too weakly by pixel-wise losses.
+- Remedies: Distillation to collapse many steps into one; Sobolev losses to preserve sharp structures.
+
+### Preliminaries (Notation and FM Objectives)
+- Bridging state with prior and target: with $\bm x_0 \sim p_0$, $\bm x_1 \sim p_1$, $\bm t \sim \mathcal U[0,1]$,
+
+  $$
+  \bm x_t = \bm t\, \bm x_1 + (1-\bm t)\, \bm x_0.
+  $$
+
+- Flow Matching (FM): learn a velocity field $v_\theta$ by
+
+  $$
+  \min_{\theta} \; \mathbb E\big[\, \lVert v_\theta(\bm x_t, t) - (\bm x_1 - \bm x_0) \rVert_2^2 \,\big],
+  \qquad \frac{d\bm x}{dt} = v_\theta(\bm x, t),\; t \in [0,1].
+  $$
+
+- Conditional FM (CFM) for time series: condition on previous state $\bm y = \bm x_1^-$ to predict next $\bm x_1^+$; with $\bm x_t = \bm t\, \bm x_1^+ + (1-\bm t)\, \bm x_0$,
+
+  $$
+  \min_{\theta} \; \mathbb E\big[\, \lVert v_\theta(\bm x_t, \bm y, t) - (\bm x_1^+ - \bm x_0) \rVert_2^2 \,\big].
+  $$
+
+### Distillation Methods (Two Paths)
+
+1) Progressive Distillation (PD; teacher–student velocity)
+- Idea: match a frozen teacher’s $K$ fine steps with one macro step from a student.
+- Sample $\Delta \in (0,1]$, $t \sim \mathcal U[0,1-\Delta]$, construct $\bm x_t$ as above.
+- Teacher rollout (no grad):
+
+  $$
+  \bm x_T = \operatorname{rollout}_K\big(v_T, \bm x_t, \bm y, t, \Delta\big)\quad (K\text{ steps of }\Delta/K).
+  $$
+
+- Student macro step:
+
+  $$
+  \bm x_S = \operatorname{step}_1\big(v_S, \bm x_t, \bm y, t, \Delta\big).
+  $$
+
+- Losses:
+
+  $$
+  L_{\text{L2}} = \lVert \bm x_T - \bm x_S \rVert_2^2, \qquad
+  L_{\text{Sob}} = \alpha \lVert \bm e \rVert_2^2 + \beta \lVert \nabla \bm e \rVert_2^2,\; \bm e = \bm x_T - \bm x_S.
+  $$
+
+- Outcome: a student that advances by macro increments with fewer inference steps.
+
+2) Flow-level (Semigroup) Distillation (learn $F_\delta$ directly)
+- Aim: learn a flow map $F_\delta(\bm x_t, t)$ that obeys three properties: identity ($F_0(\bm x_t,t)=\bm x_t$), velocity consistency ($\tfrac{\partial}{\partial \delta}F_\delta|_{\delta=0}=v_t$), and semigroup ($F_{a+b}=F_a\!\circ F_b$ with time shift).
+- Parameterization (Euler baseline + $\delta^2$ correction):
+
+  $$
+  F_\delta^{\xi}(\bm x_t, t) = \bm x_t + \delta\, v_t(\bm x_t) + \delta^2\,\big(\phi_\delta^{\xi}(\bm x_t, t) - v_t(\bm x_t)\big).
+  $$
+
+- Semigroup-consistency objective with stop-grad on the RHS target:
+
+  $$
+  \min_{\xi}\; \mathbb E\Big[\, \big\lVert F_\delta^{\xi}(\bm x_t, t) - \operatorname{sg}\big(F_{\delta/2}^{\xi}(\,F_{\delta/2}^{\xi}(\bm x_t, t),\, t+\tfrac{\delta}{2}\,)\big) \big\rVert_2^2 \,\Big].
+  $$
+
+  Flow-map properties and why they matter (with equations):
+
+  1) Identity at zero increment
+
+  $$
+  F_0(\bm x_t, t) = \bm x_t.
+  $$
+
+  Advancing by zero time changes nothing. Our parameterization enforces this exactly since plugging $\delta=0$ into
+
+  $$
+  F_\delta^{\xi}(\bm x_t, t) = \bm x_t + \delta\, v_t(\bm x_t) + \delta^2 \big(\phi_\delta^{\xi}(\bm x_t, t) - v_t(\bm x_t)\big)
+  $$
+
+  yields $F_0^{\xi}(\bm x_t, t) = \bm x_t$.
+
+  2) Consistency with the velocity (local correctness)
+
+  $$
+  \left. \frac{\partial}{\partial \delta} F_\delta(\bm x_t, t) \right|_{\delta=0} = v_t(\bm x_t).
+  $$
+
+  For the true ODE solution $\bm x(t)$ with $\dot{\bm x}(t) = v_t(\bm x(t))$ and $F_\delta(\bm x_t,t)=\bm x(t+\delta)$, the derivative at $\delta=0$ equals $\dot{\bm x}(t)$. Our parameterization matches this to first order: differentiating $F_\delta^{\xi}$ at $\delta=0$ gives
+
+  $$
+  \left.\frac{\partial}{\partial \delta} F_\delta^{\xi}(\bm x_t, t)\right|_{\delta=0} = v_t(\bm x_t),
+  $$
+
+  because the $\delta^2$ term vanishes at first order.
+
+  3) Semigroup (composition) property with time shift
+
+  $$
+  F_{a+b}(\bm x_t, t) = F_a\!\big( F_b(\bm x_t, t),\, t+b \big), \quad a,b \in \mathbb R\,.
+  $$
+
+  Meaning: advancing by $b$ then by $a$ equals a single advance by $a+b$, provided the second map starts at time $t+b$. For the true ODE flow this holds under standard well-posedness (e.g., Lipschitz $v_t$). Our semigroup loss is a practical enforcement of this law for the learned $F^{\xi}$.
+
+  Useful corollaries and limits:
+  - Associativity across multiple steps follows from the semigroup law with appropriate time shifts.
+  - Invertibility for small $\delta$ in well-posed regimes: $F_{-\delta}(\,F_{\delta}(\bm x_t, t),\, t+\delta\,) = \bm x_t$.
+  - Small-step expansion recovers the velocity: $F_\delta(\bm x_t, t) = \bm x_t + \delta\, v_t(\bm x_t) + \mathcal O(\delta^2)$.
+
+  - Outcome: a one-step flow operator consistent across compositions, approximating the teacher’s integrated dynamics.
+
+### Sobolev Loss (Sharper Fields)
+- Weighted Sobolev norm to emphasize gradients:
+
+  $$
+  \lVert \bm u \rVert_S^2 = \alpha \lVert \bm u \rVert_2^2 + \beta \lVert \nabla \bm u \rVert_2^2, \qquad \alpha=\alpha(t),\; \beta=\beta(t)\;\text{optional}.
+  $$
+
+- Use in FM and/or PD objectives to penalize gradient mismatches that appear as blur.
+
+### Practical Notes (How We Train)
+- Schedules: cosine annealing with $T_{\max}$ equal to the PD stage iteration budget (one LR cycle per stage).
+- Checkpoints: save student-only weights; resume PD with non-strict loading and a separately provided teacher.
+- Sampling: choose $\Delta$ from uniform, beta-shaped, or fixed macro steps with jitter; set $t\sim\mathcal U[0,1-\Delta]$.
+- Efficiency: teacher forward is no-grad; batch size can be increased to use GPU memory without affecting teacher correctness.
 
 ## Repo Map (brief)
 - `src/fmfts/experiments/`: training scripts (`trainer.py`), orchestration (`multistage_pd.py`), per-experiment params.
@@ -42,6 +152,11 @@ Note: This top section is a living, tracked guide for onboarding and structure.
 ## Data
 - Datasets: ns2d, ks2d, rti3d (full/sliced). Loading via `experiments/<exp>/training_parameters.py` and dataset classes.
 - Paths: configured in per-experiment params; ensure availability on the cluster.
+- Trained coverage (so far):
+  - KS-2D at 256×256
+  - Compressible NS-2D periodic at 64×64
+  - RTI-3D full at 32×32×32
+  - RTI-3D slices at 128×128
 
 ## Models
 - VelocityModelNS2D: UNet-based conditional velocity field.
@@ -73,110 +188,3 @@ Note: This top section is a living, tracked guide for onboarding and structure.
 
 ## Changelog
 - 2025-09-09: Added tracked guide scaffold; documented OOM fix in `trainer.py` (untested at time of note).
-
-*** End of Guide ***
-
-- ICLR deadline Sep 19th
-- Vacation starting Sep 10th
-- => a bit more than two weeks left
-
-**Summary**
-
-- I have successfully trained a bunch of flow matching models on:
-    - the 2d Kuramoto-Sivashinsky equation, size 256 x 256
-    - a compressible 2d Navier-Stokes setting w/ periodic BCs, size 64 x 64
-    - the full 3d Rayleigh-Taylor instability compressed to a size of 32 x 32 x 32
-    - slices of the 3d Rayleigh-Taylor instability, size 128 x 128
-- Contributions:
-    - a novel distillation method (i.e., a method that directly learns the solution of the flow matching ODE) for faster output generation
-    - a (physics-informed) Sobolev loss that avoids blurry outputs
-
-**Main argument**
-
-Using flow matching (or denoising diffusion) is really promising for the surrogate modeling of (partially observed) systems
-
-- quality-wise, these methods are capable of dealing w/ missing information and naturally generate plausible successor states.
-- in the case of fully deterministic systems, the flow matching ODE can -- in theory -- be solved with a single iteration of explicit Euler, since the transition distribution is a Dirac delta centered at the successor and the flow matching paths are therefore completely straight. => In this case, a flow matching model is as efficient as a deterministic surrogate model(!)
-
-But: 
-
-1. for non-deterministic systems, one needs more solver steps. About 10 explicit Euler / 5 midpoint steps usually suffice, but this is still ~5x slower than a single-step model.
-1. (this has nothing to do with the previous argument:) results often look blurry due to the use of the l2 norm for training. This is something that we want to avoid, since sharp features frequently appear in fluid dynamics applications.
-
-So:
-
-- Problem 1) motivates the use of a distillation-based approach.
-- Problem 2) motivates the use of a different loss function, in particular a Sobolev loss that incorporates (coordinate-space) gradients.
-
-**Preliminaries**
-
-In flow matching, one learns the flow taking samples from the initial Gaussian distribution $p_0$ to the target distribution $p_1$. This is done by solving the optimization problem
-$$
-    \min_\theta \mathbb E_{p_0(\bm x_0), p_1(\bm x_1), U(\bm t)} \lVert v_t^\theta(\bm t \bm x_1 + (1-\bm t)\bm x_0) - (\bm x_1 - \bm x_0) \rVert^2.
-$$
-In our case, $\bm x_1$ is a fluid field consisting of velocities and a pressures, perhaps also densities. In order to do prediction, i.e., in order to move from one fluid state to the next, we use a conditional model of the form
-$$
-    \min_\theta \mathbb E_{p_0(\bm x_0), p_1(\bm x_1^-, \bm x_1^+), U(\bm t)} \lVert v_t^\theta(\bm t \bm x_1^+ + (1-\bm t)\bm x_0 ∣ \bm x_1^-) - (\bm x_1^+ - \bm x_0) \rVert^2,
-$$
-where $\bm x_1^+$ is now the next and $\bm x_1^-$ the previous fluid state. Bot $\bm x_1^-$ and $\bm x_1^+$ are drawn from the same trajectory.
-
-### 1. The distillation method 
-
-Say we have trained a flow matching velocity model $v_t(x_t) = v_t^\theta(x_t)$, which is assumed wlog to be unconditional. To generate new approx. samples from $p_1$, one samples $x_0 ∼ p_0$ from the Gaussian distribution and then solve the ODE
-$$
-    \dot {x}_t = v_t(x_t), \quad\quad(*)
-$$
-from $t = 0$ to $t = 1$. Associated with the velocity field $v^\theta$ is the underlying *flow* that it generates:
-$$
-    F_\delta(x_t, t) = x_{t + \delta}
-$$
-when $x_t$ follows the ODE $(*)$. If we *had* access to a model computing $F$, we could compute the solution of $x_0$ in a single step by evaluating $F_1(x_0, 0)$.
-
-But we don't have access to it, so we have to learn it. The first insight is that we can characterize the flow by three properties:
-
-1. (identity when no increment) $F_0(x_t, t) = x_t$.
-1. (consistency w/ velocity field) $\frac d {d\delta} F^\xi_\delta(x_t, t) |_{\delta = 0} = v_t(x_t)$.
-1. (semigroup property) $F_{a+b}(x_t, t) = F_a(F_b(x_t,t), t+b)$.
-
-Then, we parametrize a neural network:
-$$
-    F^\xi_\delta(x_t, t) = \underbrace{x_t + \delta v_t(x_t)}_{\text{explicit Euler step}} + \underbrace{\delta^2 (\phi^\xi_\delta(x_t,t) - v_t(x_t))}_{\text{learned correction}}.
-$$
-
-This already ensures properties 1) and 2). To get the third property, we are optimizing the following "semigroup" loss:
-$$
-    \min_\xi \mathbb E_{\bm \delta, \bm t, \bm x_1, \bm x_0}  \lVert F_{\bm \delta}^\xi(\bm x_{\bm t}, \bm t) - \text{sg}(F_{\bm \delta/2}^\xi(F_{\bm \delta/2}^\xi(\bm x_{\bm t}, \bm t), \bm t + \bm \delta/2)) \rVert^2.
-$$
-Here, the $\text{sg}$ is the "stopgrad" operation. I'm utilizing it here since the rhs is a more accurate version of what we're trying to learn, i.e. closer to the true flow $F_{\bm \delta}(\bm x_{\bm t}, \bm t)$.
-In practice, we are initializing $\phi$ (the "corrector" network) with a copy of $v$, where we modify the input weights to add an additional channel for $\delta$.
-
-
-## 2. Avoiding blurryness in generated states 
-
-- When being trained, both the velocity model (trained w/ flow matching) and the distilled flow (trained w/ semigroup loss) tend to produce blurry results.
-- This is likely due to the use of the l2 norm in image space.
-
-The Sobolev norm addresses this issue: In our case, $x_1$ is a fluid field, i.e., it is a differentiable function of the form $x_1 : \R^d \rightarrow \R^n$, where $d$ is the coordinate dimension ($d  = 2$ or $d = 3$) and $n$ is the number of fields, e.g. $n = 3$ when there is one pressure and a 2d velocity field.
-
-One can define a weighted Sobolev norm by taking
-$$
-    \lVert x_1 \rVert^2_S = \alpha \lVert x_1 \rVert^2_2 + \beta \lVert \nabla x_1 \rVert^2_2,
-$$
-where $\alpha$ and $\beta$ are constants. Since it includes the gradient of $x_1$, it is more sensitive to changes of $x_1$ in the coordinate domain. In other words, the difference $\lVert x_1 - x_1' \rVert^2_S$ is now larger if the gradients of $x_1$ and $x_1'$ don't match, which is the case if $x_1$ is, for instance, a blurry version of $x_1'$.
-
-This norm can be extended to the case where $x_t$ is a not fully denoised fluid field:
-$$
-    \lVert x_t \rVert^2_{S_t} = \alpha_t \lVert x_t \rVert^2_2 + \beta_t \lVert \nabla x_t \rVert^2_2,
-$$
-where $\alpha_t$ and $\beta_t$ are now allowed to depend on the time, e.g., we can let $\alpha_t$ stay constant and increase $\beta_t$ as $t \rightarrow 1$ in order to put a larger priority on "deblurring" less noisy fluid fields. 
-
-The **first** way one can use this norm is to train the velocity model with this new norm instead:
-$$
-    \min_\theta \mathbb E_{p_0(\bm x_0), p_1(\bm x_1), U(\bm t)} \lVert v_t^\theta(\bm t \bm x_1 + (1-\bm t)\bm x_0) - (\bm x_1 - \bm x_0) \rVert^2_{S_{\bm t}}.
-$$
-This is actually sound, in the sense that $v^\theta$ is learning the correct velocity field.
-
-The **second** way one can use this is to improve training of the distillation model: The new objective simply becomes:
-$$
-    \min_\xi \mathbb E_{\bm \delta, \bm t, \bm x_1, \bm x_0}  \lVert F_{\bm \delta}^\xi(\bm x_{\bm t}, \bm t) - \text{sg}(F_{\bm \delta/2}^\xi(F_{\bm \delta/2}^\xi(\bm x_{\bm t}, \bm t), \bm t + \bm \delta/2)) \rVert^2_{S_{\bm t}}.
-$$
