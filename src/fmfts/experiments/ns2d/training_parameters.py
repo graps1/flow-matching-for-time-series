@@ -78,5 +78,38 @@ params = {
         "cls": DatasetNS2D,
         "kwargs": {},
     },
+    # Evaluation defaults (overridable via CLI)
+    "eval": {
+        "common": {
+            "device": "cuda",
+            "seed": 42,
+            #"batch_size": 4,  #8
+            "samples": 16,  #64
+        },
+        "models": {
+            "velocity":    {"checkpoint": "ns2d/trained_models/state_velocity.pt"},
+            "flow":        {"checkpoint": "ns2d/trained_models/state_flow.pt"},
+            "velocity_pd": {"checkpoint": "ns2d/trained_models/stage_1_student.pt"},
+        },
+        "one_step": {
+            "steps":  {"velocity": 50, "flow": 1, "velocity_pd": 50},
+            "method": {"velocity": "midpoint", "velocity_pd": "midpoint"}
+        },
+        "rollout": {
+            "length": 10,  #32
+            "latent_policy": "fixed_latent",  # fixed_latent | deterministic | new_latent
+            "steps":  {"velocity": 50, "flow": 1, "velocity_pd": 50},
+            "method": {"velocity": "midpoint", "velocity_pd": "midpoint"}
+        },
+        "metrics": {
+            "enabled": ["l2", "sob"],
+            "params": {"sob": {"alpha": 1.0, "beta": 0.0}}
+        },
+        "artifacts": {
+            "pdf": {"filename": "eval_report.pdf", "dpi": 150, "max_figs_per_model": 6, "include_rollout_curves": True},
+            "save_csv": True,
+            "save_json": True
+        }
+    },
 
 }

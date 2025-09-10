@@ -130,6 +130,53 @@ Useful corollaries and limits:
 - Outcome: a one-step flow operator consistent across compositions, approximating the teacher’s integrated dynamics.
 
 
+### Sampling APIs (Flow vs Velocity)
+- FlowModel.sample(y, x0=None, steps=S)
+
+  Inputs: conditioner $y\in\mathbb{R}^{B\times C\times H\times W}$; optional $x\_0$ (defaults to a sample from $p\_0$ with same shape); substeps $S\ge 1$ with $\Delta t = 1/S$.
+
+  Per substep $i=0,\dots,S-1$ with $t\_i = i\,\Delta t$:
+
+  $$
+  x \leftarrow x + \Delta t\, v\_\theta(x, y, t\_i) \; + \; (\Delta t)^2\,\big( \phi(x, y, t\_i, \Delta t) - v\_\theta(x, y, t\_i) \big).
+  $$
+
+  Output: $x$ at $t=1$ (one macro step). Stochasticity only from $x\_0$ if not provided.
+
+- VelocityModel.sample(y, x0=None, steps=S, method)
+
+  Inputs: conditioner $y$, optional $x\_0$ (defaults to $p\_0$ sample), substeps $S$, method in {euler, midpoint, rk4} with $\Delta t = 1/S$ and $t\_i=i\,\Delta t$.
+
+  Euler:
+
+  $$
+  x\_{i+1} = x\_i + \Delta t\, v\_\theta(x\_i, y, t\_i).
+  $$
+
+  Midpoint (second order):
+
+  $$
+  k\_0 = v\_\theta(x\_i, y, t\_i),\quad
+  x\_{i+1} = x\_i + \Delta t\, v\_\theta\big(x\_i + (\Delta t/2)\,k\_0,\, y,\, t\_i + \Delta t/2\big).
+  $$
+
+  RK4 (fourth order):
+
+  $$
+  \begin{aligned}
+  &k\_0 = v\_\theta(x\_i, y, t\_i),\\
+  &k\_1 = v\_\theta(x\_i + (\Delta t/2)\,k\_0,\, y,\, t\_i + \Delta t/2),\\
+  &k\_2 = v\_\theta(x\_i + (\Delta t/2)\,k\_1,\, y,\, t\_i + \Delta t/2),\\
+  &k\_3 = v\_\theta(x\_i + \Delta t\,k\_2,\, y,\, t\_i + \Delta t),\\
+  &x\_{i+1} = x\_i + (\Delta t/6)\,(k\_0 + 2k\_1 + 2k\_2 + k\_3).
+  \end{aligned}
+  $$
+
+  Output: $x$ at $t=1$ after integrating $v\_\theta$.
+
+- Coherence tip: for a single stochastic trajectory, reuse the same $x\_0$ across steps (or supply it once) instead of drawing a new $p\_0$ sample each step; velocity integration has no per-substep $x\_0$ randomness.
+
+
 ### Sobolev Loss (Sharper Fields)
 - Weighted Sobolev norm to emphasize gradients:
 
