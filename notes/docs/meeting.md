@@ -56,6 +56,20 @@ Bridge (training states):
   - `x_t = (1 − t) x_0 + t x_1`, with `t ~ p(t)` and `x_0 ~ p_0`.
   - In code: see `DistilledVelocityMixin.compute_loss` where `x_t` is formed from `(x_0, x_1, t)`.
 
+### Preliminaries: FM and CFM Objectives
+- Unconditional FM (velocity matching on the bridge):
+
+  $$
+  \min_{\theta} \; \mathbb{E}\big[\, \| v_\theta(x_t, t) - (x_1 - x_0) \|_2^2 \,\big],
+  \quad x_t = (1{-}t)\,x_0 + t\,x_1,\; t\sim U[0,1].
+  $$
+
+- Conditional FM (condition on previous state or features `y`):
+
+  $$
+  \min_{\theta} \; \mathbb{E}\big[\, \| v_\theta(x_t, y, t) - (x_1 - x_0) \|_2^2 \,\big].
+  $$
+
 ### Conditional Flow Matching via Progressive Distillation
 Goal: train `v_θ` so that a one‑step macro update over `Δ` matches the effect of rolling the teacher `v_T` for `K` fine steps of size `Δ/K` starting from the same `(x_t, y, t)`.
 
@@ -90,6 +104,14 @@ We match the teacher’s macro‑effect at the sampled `(x_t, y, t, Δ)`.
   - Gradients are over spatial axes; implemented by `utils/loss_fn.sobolev`.
   - In our NS2D defaults we often prefer L2 for PD; Flow/Velocity can use Sobolev.
 
+Sobolev norm (explicit form):
+
+$$
+\| u \|_{S}^2 
+= \alpha \| u \|_2^2 
+\; + \; \beta \; t^2 \, \| \nabla u \|_2^2, \quad u = x_S {-} x_T.
+$$
+
 Expanded expectation (for clarity):
 ```
 L(θ) = E_{(y,x1)~p_data} E_{x0~p0} E_{(t,Δ)~p} [ ℓ( Step_1(x_t; y,t,Δ; v_θ) − Rollout_K(x_t; y,t,Δ; v_T) ) ]
@@ -109,6 +131,31 @@ where x_t = (1−t) x0 + t x1.
 - Teacher weights are frozen (`requires_grad=False`) and moved to the active device before use; student checkpoints exclude teacher keys.
 - The bridge `x_t` provides supervision on in‑between states, improving stability versus endpoint‑only targets.
 - For fair targets, the teacher and student share the same integrator during training.
+
+### Flow‑Level Distillation (Semigroup Consistency)
+Besides PD on velocities, we also train an explicit flow map `F_Δ` consistent with ODE semantics. The model parameterization used in code (`cfm_flow.py`) is
+
+$$
+F^{\xi}_\delta(x, y, t) 
+= x \; + \; \delta \, v_\theta(x, y, t) \; + \; \delta^2 \, (\phi_\delta^{\xi}(x, y, t) - v_\theta(x, y, t)),
+$$
+
+where `φ_δ^ξ` is produced by a UNet (`phi_net`) that augments the velocity network with the `Δ` channel.
+
+Properties ensured by construction/objective:
+- Identity at zero: `F_0(x, y, t) = x`.
+- Local correctness: `∂F_δ/∂δ |_{δ=0} = v_θ(x, y, t)`.
+- Semigroup with time shift: `F_{a+b}(x,t) = F_a(F_b(x,t), t+b)`.
+
+Training objective (no‑grad target on RHS), matching multi‑step vs. single‑step with time shift:
+
+$$
+\min_{\xi} \; \mathbb{E}\Big[ 
+\big\| F_\delta^{\xi}(x_t, y, t)
+\;{-}\; \operatorname{sg}\Big( F_{\delta/2}^{\xi}( F_{\delta/2}^{\xi}(x_t, y, t),\, y,\, t{+}\tfrac{\delta}{2}) \Big) \big\|_2^2 \Big].
+$$
+
+In code this appears as computing a K‑step teacher rollout (with `steps` fine substeps, no‑grad) and matching a single macro step via the flow with an L2/Sobolev loss; see `FlowModel.compute_loss` and `FlowModel.forward`.
 
 ---
 
@@ -131,6 +178,12 @@ Entry points: `src/fmfts/experiments/ns2d/models.py`, `src/fmfts/utils/models/cf
 - FlowModelNS2D:
   - Wraps a trained `VelocityModelNS2D`; `phi_net` clones velocity UNet with `+1` input channel for Δ.
   - `phi(x, y, t, Δ)`: concat `[x, y, t, Δ]`; used for single macro flow step.
+  - Flow update formula (from `cfm_flow.py`):
+    
+    $$
+    F^{\xi}_\delta(x, y, t) 
+    = x + \delta\, v_\theta(x, y, t) + \delta^2 (\phi_\delta^{\xi}(x, y, t) - v_\theta(x, y, t)).
+    $$
 
 - SingleStepModelNS2D:
   - Uses a deep copy of the velocity UNet as `phi_net` for Δ‑agnostic single‑step mapping.
