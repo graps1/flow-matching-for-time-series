@@ -1,0 +1,127 @@
+{
+  "summary": {
+    "one_step": {
+      "flow": {
+        "l2": {
+          "mean": 0.028520272840978578,
+          "median": 0.025383255444467068,
+          "std": 0.012561964247108554,
+          "count": 128
+        }
+      },
+      "velocity": {
+        "l2": {
+          "mean": 0.029022152652032673,
+          "median": 0.024941615760326385,
+          "std": 0.01313139437123944,
+          "count": 128
+        }
+      },
+      "velocity_pd": {
+        "l2": {
+          "mean": 0.04288528246979695,
+          "median": 0.039231713861227036,
+          "std": 0.012228104414074587,
+          "count": 128
+        }
+      }
+    },
+    "rollout": {
+      "flow": {
+        "l2": {
+          "mean": 0.1862458560291898,
+          "median": 0.16085785627365112,
+          "std": 0.12774073363047472,
+          "count": 1386
+        }
+      },
+      "velocity": {
+        "l2": {
+          "mean": 0.17208823409538937,
+          "median": 0.1517474129796028,
+          "std": 0.10983200084308666,
+          "count": 1386
+        }
+      },
+      "velocity_pd": {
+        "l2": {
+          "mean": 0.22341759830799282,
+          "median": 0.20673180371522903,
+          "std": 0.13346916389684754,
+          "count": 1386
+        }
+      }
+    }
+  },
+  "config": {
+    "common": {
+      "device": "cuda",
+      "seed": 42,
+      "batch_size": 32,
+      "samples": 99
+    },
+    "models": [
+      "flow",
+      "velocity",
+      "velocity_pd"
+    ],
+    "viz": {
+      "enabled": true,
+      "n_samples": 3,
+      "channels": [
+        0,
+        1
+      ],
+      "colorbar": true,
+      "rollout_steps": 5
+    },
+    "one_step": {
+      "steps": {
+        "velocity": 50,
+        "flow": 1,
+        "velocity_pd": 6
+      },
+      "method": {
+        "velocity": "midpoint",
+        "velocity_pd": "midpoint"
+      }
+    },
+    "rollout": {
+      "length": 14,
+      "latent_policy": "new_latent",
+      "steps": {
+        "velocity": 50,
+        "flow": 1,
+        "velocity_pd": 6
+      },
+      "method": {
+        "velocity": "midpoint",
+        "velocity_pd": "midpoint"
+      },
+      "use_sequence_gt_for_metrics": true
+    },
+    "metrics": {
+      "enabled": [
+        "l2"
+      ],
+      "params": {
+        "sob": {
+          "alpha": 1.0,
+          "beta": 0.0
+        }
+      },
+      "use_denormalized": false
+    },
+    "artifacts": {
+      "pdf": {
+        "filename": "eval_report.pdf",
+        "dpi": 150,
+        "max_figs_per_model": 6,
+        "include_rollout_curves": true
+      },
+      "save_csv": true,
+      "save_json": true
+    },
+    "experiment": "ns2d"
+  }
+}

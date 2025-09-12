@@ -9,4 +9,8 @@ src/fmfts/datasets
 # allowing the exception to work.
 notes/*
 !notes/meeting.md
+# Track project guide (only this file under notes/docs)
+!notes/docs/
+notes/docs/*
+!notes/docs/meeting.md
 *.out
