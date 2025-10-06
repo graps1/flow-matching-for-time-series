@@ -21,32 +21,26 @@ class DoubleConv(nn.Module):
                  padding="same", 
                  padding_mode="zeros", 
                  dims=2,
-                 nl=nn.ReLU()):
+                 nl=nn.ReLU(),
+                 include_norm=True):
         super().__init__()
-        cls = [nn.Conv1d, nn.Conv2d, nn.Conv3d][dims-1]
-        # norm_cls = [nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d][dims-1]
+        conv_cls = [nn.Conv1d, nn.Conv2d, nn.Conv3d][dims-1]
+        # self.norm = [nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d][dims-1](num_features = out_channels, momentum = 0.001)
+
+        self.norm = None
+        if include_norm:
+            norm_cls = [nn.InstanceNorm1d, nn.InstanceNorm2d, nn.InstanceNorm3d][dims-1]
+            self.norm = norm_cls(num_features = out_channels, eps=1.0)
+
         self.nl = nl 
-        self.conv1 = cls(in_channels,  out_channels, 3, padding=padding, padding_mode=padding_mode)
-        # self.norm1 = norm_cls(in_channels)
-        self.conv2 = cls(out_channels,  out_channels, 3, padding=padding, padding_mode=padding_mode)
-        # self.norm2 = norm_cls(in_channels)
-        # self.conv3 = cls(in_channels,  in_channels, 3, padding=padding, padding_mode=padding_mode)
-        # self.norm3 = norm_cls(in_channels)
-        # self.conv4 = cls(in_channels, out_channels, 3, padding=padding, padding_mode=padding_mode)
-        # self.norm4 = norm_cls(in_channels)
+        self.conv1 = conv_cls(in_channels,  out_channels, 3, padding=padding, padding_mode=padding_mode)
+        self.conv2 = conv_cls(out_channels,  out_channels, 3, padding=padding, padding_mode=padding_mode)
 
     def forward(self, x):
-        # x = self.norm1(x)
         x = self.conv1(x)
+        if self.norm is not None: x = self.norm(x)
         x = self.nl(x)
-        # x = self.norm2(x)
         x = self.conv2(x)
-        # x = self.nl(x)
-        # x = self.norm3(x)
-        # x = self.conv3(x)
-        # x = self.nl(x)
-        # x = self.norm4(x)
-        # x = self.conv4(x)
         return x
 
 class ResNetBlock(nn.Module):
@@ -55,22 +49,60 @@ class ResNetBlock(nn.Module):
                  out_channels, 
                  padding,
                  dims=2,
-                 nl=nn.ReLU()):
+                 nl=nn.ReLU(),
+                 include_norm=True):
         super().__init__()
         cls = [nn.Conv1d, nn.Conv2d, nn.Conv3d][dims-1]
-        self.dc = DoubleConv(in_channels, out_channels, padding="valid", dims=dims, nl=nl)
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+        self.dc = DoubleConv(in_channels, out_channels, padding="valid", dims=dims, nl=nl, include_norm=include_norm)
         self.conv = cls(in_channels, out_channels, kernel_size=1)
         self.padding = padding
         self.dims = dims
 
     def forward(self, x):
+
         x1, x2 = x.clone(), x.clone()
         for pm, dim in zip(self.padding, range(self.dims)):
             x1 = padding.pad(x1, dim=2+dim, extent=2, padding_mode=pm)
-            # x1 = padding.pad(x1, dim=2+dim, extent=4, padding_mode=pm)
+
         y = self.conv(x2)
         z = self.dc(x1)
+
         return y + z
+    
+class ResNet(nn.Module):
+    def __init__(self, 
+                 in_channels=1, 
+                 out_channels=1, 
+                 features=(32, 64, 128),
+                 padding=("zeros", "zeros"),
+                 nl=nn.ReLU()):
+        super().__init__()
+        self.padding = padding
+        self.dims = len(self.padding)
+        assert self.dims in [1,2,3]
+
+        features = [in_channels] + list(features) + [out_channels]
+        self.pool = MaxPool(*[2]*self.dims)
+        self.blocks = nn.ModuleList([
+            ResNetBlock(
+                features[k], 
+                features[k+1], 
+                padding=self.padding, 
+                nl=nl, dims=self.dims) for k in range(len(features)-1)
+        ])
+        
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
+    def forward(self, x):
+        for block in self.blocks: 
+            x = block(x)
+            x = self.pool(x)
+        return x
+    
 
 class UNet(nn.Module):
     def __init__(self, 
@@ -80,83 +112,78 @@ class UNet(nn.Module):
                  padding=("zeros", "zeros"),
                  nl=nn.ReLU()):
         super().__init__()
-        dims = len(padding)
-        assert dims in [1,2,3]
-        
-        self.pool = MaxPool(*[2]*dims)
+        self.padding = padding
+        self.dims = len(self.padding)
+        assert self.dims in [1,2,3]
+            
+        self.encoders = torch.nn.ModuleList([])
+        self.bridges  = torch.nn.ModuleList([])
+        self.decoders = torch.nn.ModuleList([])
+        self.up = nn.Upsample(scale_factor=tuple([2]*self.dims), mode="nearest")
+        self.pool = MaxPool(*[2]*self.dims)
         self.nl = nl
-        self.first = ResNetBlock(in_channels, features[0], padding=padding, nl=self.nl, dims=dims)
-        self.encoders = nn.ModuleList([
-                ResNetBlock(
-                    features[k],
-                    features[k+1],
-                    padding=padding,
-                    nl=self.nl,
-                    dims=dims
-                ) 
-                for k in range(len(features)-1)])
-        self.bottleneck = ResNetBlock(
-            features[-1],
-            features[-1],
-            padding=padding,
-            nl = self.nl, 
-            dims=dims)
-        self.decoders = nn.ModuleList([
-            ResNetBlock(
-                2*features[k-1],
-                features[k-1],
-                padding=padding,
-                nl=self.nl,
-                dims=dims) 
-            for k in range(len(features)-1, 0, -1)])
-        self.up = nn.ModuleList([
-            nn.Sequential(
-                nn.Upsample(scale_factor=tuple([2]*dims), mode="nearest"), # <- "bilinear" doesn't support 3d
-                ResNetBlock(
-                    features[k],
-                    features[k-1],
-                    padding=padding,
-                    nl=self.nl,
-                    dims=dims)
-            ) for k in range(len(features)-1, 0, -1)])
-        self.final = ResNetBlock(features[0], out_channels, padding=padding, nl=self.nl, dims=dims)
+
         self.in_channels = in_channels
         self.out_channels = out_channels
 
+        self.add_top_unet_block(in_channels, features[0], out_channels)
+        for k in range(len(features)-1): 
+            self.append_unet_block(features[k+1])
+
     def forward(self, x):
-        x = self.first(x)
-        encoded = []
-        for encoder in self.encoders:
-            encoded.append(x)
-            x = encoder(x)
-            x = self.pool(x)
-        x = self.bottleneck(x)
-        for decoder, up, encx in zip(self.decoders, self.up, encoded[::-1]):
-            x = up(x)
-            x = torch.cat([x, encx], dim=1)
-            x = self.nl(decoder(x))
-        x = self.final(x)
+        x_bridged = []
+        for k in range(len(self.encoders)):
+            x = self.encoders[k](x)
+            x_bridged.append( self.bridges[k](x) )
+            if k < len(self.encoders) - 1: x = self.pool(x)
+        for k in range(len(self.decoders)-1, -1, -1):
+            if k == len(self.decoders)-1: x_up = torch.zeros_like( x_bridged[k] )
+            x = self.decoders[k]( x_bridged[k] + x_up )
+            if k > 0:  x_up = self.up(x)
         return x
+
+    def add_top_unet_block(self, in_channels, bridge_channels, out_channels):
+        encoder = ResNetBlock(in_channels,     bridge_channels, padding=self.padding, nl=self.nl, dims=self.dims, include_norm=False) 
+        bridge  = ResNetBlock(bridge_channels, bridge_channels, padding=self.padding, nl=self.nl, dims=self.dims, include_norm=False) 
+        decoder = ResNetBlock(bridge_channels, out_channels,    padding=self.padding, nl=self.nl, dims=self.dims, include_norm=False) 
+
+        self.encoders.append( encoder )
+        self.bridges.append(  bridge )
+        self.decoders.append( decoder )
+    
+    def append_unet_block(self, bridge_channels):
+        top_channels = self.encoders[-1].out_channels
+
+        encoder = ResNetBlock(top_channels,    bridge_channels, padding=self.padding, nl=self.nl, dims=self.dims, include_norm=False) 
+        bridge  = ResNetBlock(bridge_channels, bridge_channels, padding=self.padding, nl=self.nl, dims=self.dims, include_norm=False) 
+        decoder = ResNetBlock(bridge_channels, top_channels,    padding=self.padding, nl=self.nl, dims=self.dims, include_norm=False) 
+
+        self.encoders.append( encoder )
+        self.bridges.append(  bridge )
+        self.decoders.append( decoder )
 
     
     def clone_and_adapt(self, additional_in_channels):
         cpy = copy.deepcopy(self)
 
-        l1 = self.first.dc.conv1
+        l1 = self.encoders[0].dc.conv1
         l1_ = type(l1)( l1.in_channels + additional_in_channels, l1.out_channels, 
                         kernel_size=l1.kernel_size, 
                         padding=l1.padding, 
                         padding_mode=l1.padding_mode)
-        l1_.weight.data[:, :-additional_in_channels] = l1.weight.data
-        cpy.first.dc.conv1 = l1_
+        l1_.weight.data[:, :-additional_in_channels] = l1.weight.data.clone()
+        l1_.bias.data = l1.bias.data.clone()
+        cpy.encoders[0].dc.conv1 = l1_
         
-        l1 = self.first.conv
+        
+        l1 = self.encoders[0].conv
         l1_ = type(l1)( l1.in_channels + additional_in_channels, l1.out_channels, 
                         kernel_size=l1.kernel_size, 
                         padding=l1.padding, 
                         padding_mode=l1.padding_mode)
-        l1_.weight.data[:, :-additional_in_channels] = l1.weight.data
-        cpy.first.conv = l1_
+        l1_.weight.data[:, :-additional_in_channels] = l1.weight.data.clone()
+        l1_.bias.data = l1.bias.data.clone()
+        cpy.encoders[0].conv = l1_
+
 
         return cpy
-

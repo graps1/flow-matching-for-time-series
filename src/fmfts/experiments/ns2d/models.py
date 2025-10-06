@@ -27,6 +27,7 @@ class FlowModelNS2D(FlowModel):
         self.phi_net = velocity_model.unet.clone_and_adapt(additional_in_channels=1) 
 
     def phi(self, x, y, tx, delta):
+        delta = torch.zeros_like(delta)
         tx = tx.view(-1, 1, 1, 1).expand(-1, -1, *x.shape[2:])
         delta = delta.view(-1, 1, 1, 1).expand(-1, -1, *x.shape[2:])
         x = self.phi_net(torch.cat([x, y, tx, delta], dim=1))

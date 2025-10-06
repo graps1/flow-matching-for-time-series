@@ -2,6 +2,8 @@ from fmfts.experiments.rti3d_full.models import VelocityModelFullRTI3D, \
                                                   SingleStepModelFullRTI3D, \
                                                   FlowModelFullRTI3D
 from fmfts.dataloader.rti3d_full import DatasetFullRTI3D
+from fmfts.utils.models.add import AdversarialDiffusionDistillation
+
 
 params = {
     "flow": {
@@ -22,10 +24,10 @@ params = {
             "loss": "l2",
         },
         "training_kwargs": {
-            "batch_size": 4,
+            "batch_size": 32,
         },
-        "lr_max": 5e-5,
-        "lr_min": 5e-5,
+        "lr_max": 1e-5,
+        "lr_min": 1e-5,
         "cls": VelocityModelFullRTI3D
     },
     "single_step": {
@@ -40,6 +42,15 @@ params = {
         "lr_max": 1e-5,
         "lr_min": 1e-5,
         "cls": SingleStepModelFullRTI3D
+    },
+    "add": {
+        "training_kwargs": { 
+            "w_distillation": 0.0,
+            "w_R1": 25.,
+            "generator_rate": 1,
+        },
+        "optimizer_init": { "lr_G": 1e-6, "lr_D": 5e-5 },
+        "cls": AdversarialDiffusionDistillation
     },
     "dataset": {
         "cls": DatasetFullRTI3D,

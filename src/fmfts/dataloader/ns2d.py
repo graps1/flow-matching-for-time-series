@@ -77,10 +77,10 @@ class DatasetNS2D(Dataset):
             k = i * len(x) // n_plots
             if visualization == "speed": 
                 speed = self.compute_speed(x[k])
-                ax[i].imshow(speed.cpu().numpy(), extent=(0,1,0,1), vmin=0, vmax=3)
+                ax[i].imshow(speed.cpu().numpy(), extent=(0,1,0,1), vmin=0, vmax=2)
             if visualization == "sqrt_energy": 
                 sqrt_energy = self.compute_energy(x[k])**0.5
-                ax[i].imshow(sqrt_energy.cpu().numpy(), extent=(0,1,0,1), vmin=0, vmax=2)
+                ax[i].imshow(sqrt_energy.cpu().numpy(), extent=(0,1,0,1), vmin=0.0, vmax=1.7, cmap="viridis")
             elif visualization == "streamlines":
                 speed = self.compute_speed(x[k]).cpu().numpy()
                 norm = Normalize(vmin=0, vmax=4.5, clip=True)

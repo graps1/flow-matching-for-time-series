@@ -21,7 +21,7 @@ class VelocityModelSlicedRTI3D(VelocityModel):
         self.in_dim = 2*self.n_channels + 1 + self.include_vertical_position
         self.v_net = UNet(
             in_channels=self.in_dim, out_channels=self.n_channels,
-            padding=("circular", "zeros"),
+            padding=("zeros", "circular"),
             features=features,
             nl = torch.nn.ReLU()
         )
