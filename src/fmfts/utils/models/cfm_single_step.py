@@ -13,7 +13,7 @@ class SingleStepModel(TimeSeriesModel):
     def phi(self, x0, y):
         raise NotImplementedError()
 
-    def compute_loss(self, y1, x1, ctr, steps=10, method="midpoint"):
+    def compute_loss(self, y1, x1, steps=10, method="midpoint"):
         x0 = self.p0.sample(x1.shape).to(x1.device)
 
         F_multistep = torch.no_grad(self.v.sample)(y1, x0=x0, steps=steps, method=method)

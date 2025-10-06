@@ -56,4 +56,4 @@ class TimeSeriesModel(torch.nn.Module):
                     ret["loss"] |= { "test": loss.item() }
 
             ctr += 1
-            yield loss
+            yield ret
