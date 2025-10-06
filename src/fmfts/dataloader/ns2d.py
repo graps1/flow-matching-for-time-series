@@ -12,7 +12,7 @@ class DatasetNS2D(Dataset):
         self.history = history
         # data has shape (n_samples, n_timesteps, n_channels, height, width)
         self.data = torch.load(datapath, weights_only=True)
-        self.data = self.data.to(torch.get_default_device())
+        self.data = self.data.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
         self.n_samples, self.total_sequence_len, self.n_channels, self.height, self.width = self.data.shape
         
         self.mean = torch.tensor([2.7828e-05, 8.4455e-05, 1.0000e+00, 6.0033e+01]).view(1,-1,1,1)

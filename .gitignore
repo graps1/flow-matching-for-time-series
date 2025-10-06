@@ -4,3 +4,13 @@ src/fmfts/datasets
 **/runs
 **/checkpoints
 *.pt
+# Local notes (ignored except meeting.md)
+# Use a file-level ignore so the directory itself is not excluded,
+# allowing the exception to work.
+notes/*
+!notes/meeting.md
+# Track project guide (only this file under notes/docs)
+!notes/docs/
+notes/docs/*
+!notes/docs/meeting.md
+*.out

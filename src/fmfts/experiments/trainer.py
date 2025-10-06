@@ -1,4 +1,4 @@
-# import os
+import os
 import torch
 import datetime
 from torch.utils.tensorboard import SummaryWriter 
@@ -20,7 +20,7 @@ experiment2params = {
     "ns2d": ns2d_params,
     "ks2d": ks2d_params,
 }
-modeltypes = [ "velocity", "single_step", "flow", "rectifier", "add" ]
+modeltypes = [ "velocity", "single_step", "flow", "rectifier", "add", "velocity_pd" ]
 
 if __name__ == "__main__":
     torch.set_default_device("cuda")
@@ -32,6 +32,8 @@ if __name__ == "__main__":
     parser.add_argument("--new", "-n", help="creates and trains a new model", action="store_true")
     parser.add_argument("--source", "-s", help="the savefile to load", default="")
     parser.add_argument("--out", "-o", help="the path where to save the file", default="")
+    parser.add_argument("--teacher", default=None, help="Path to teacher checkpoint (for velocity_pd). Overrides default if provided.")
+    parser.add_argument("--max-iters", type=int, default=None, help="Override max iterations for velocity_pd stage (takes precedence over training_parameters).")
 
     args = parser.parse_args()
     assert args.modeltype in modeltypes, f"modeltype must be in {list(modeltypes)}"
@@ -47,6 +49,10 @@ if __name__ == "__main__":
     state_dir = f"{args.experiment}/trained_models"
     state_path = f"{state_dir}/state_{args.modeltype}.pt" if args.source == "" else args.source
     target_path = state_path if args.out == "" else args.out
+    # Ensure output directories exist
+    os.makedirs(state_dir, exist_ok=True)
+    os.makedirs(f"{args.experiment}/checkpoints", exist_ok=True)
+    os.makedirs(f"{args.experiment}/runs", exist_ok=True)
     print(state_path)
             
     # initialize model
@@ -54,7 +60,7 @@ if __name__ == "__main__":
     if args.modeltype == "rectifier":
         modelparams["cls"] = Rectifier
 
-    if args.modeltype in ["flow", "single_step", "rectifier", "add"]:
+    if args.modeltype in ["flow", "single_step", "rectifier", "add", "velocity_pd"]:
         state_velocity_path = f"{state_dir}/state_velocity.pt"
         try:    
             serialized_state_velocity = torch.load(state_velocity_path, weights_only=True)
@@ -62,7 +68,16 @@ if __name__ == "__main__":
             velocity_model.load_state_dict(serialized_state_velocity['model'])
         except: 
             raise Exception(f"couldn't load velocity model ({state_velocity_path})")
+        
+    if args.modeltype in ["flow", "single_step"]:
         model_kwargs |= {"velocity_model": velocity_model}
+    else:
+        # Allow custom teacher checkpoint path via --teacher; otherwise use default
+        teacher1_path = args.teacher if args.teacher is not None else f"{state_dir}/state_velocity_teacher1.pt"
+        serialized_state_teacher1 = torch.load(teacher1_path, weights_only=True)
+        teacher = params["velocity"]["cls"](**params["velocity"]["model_kwargs"])
+        teacher.load_state_dict(serialized_state_teacher1['model'])
+        model_kwargs |= {"teacher": teacher}
     model = modelparams["cls"](**model_kwargs)
 
     # initialize optimizer
@@ -74,7 +89,11 @@ if __name__ == "__main__":
     if not args.new:
         serialized_state =  torch.load(state_path, weights_only=True)
         time_passed_init = serialized_state["time_passed"]
-        model.load_state_dict(serialized_state["model"])
+        # For velocity_pd, checkpoints intentionally exclude teacher weights.
+        # Load non-strictly to avoid errors on missing teacher keys.
+        strict_load = args.modeltype != "velocity_pd"
+        model.load_state_dict(serialized_state["model"], strict=strict_load)
+        #optimizer.load_state_dict(serialized_state["optimizer"])
         ctr_init = serialized_state.get("tensorboard_ctr", 0)
         for k, o in optimizers.items(): o.load_state_dict(serialized_state["optimizer"][k])
         model.update_optimizers(optimizers, **modelparams["optimizer_init"])
@@ -84,7 +103,14 @@ if __name__ == "__main__":
         model.advance()
         print(f"loaded rectifier. advancing to the next level")
     
-    # lr_scheduler = CosineAnnealingLR(optimizers, T_max=500, eta_min=modelparams["lr_min"])
+    # Determine PD stage length (only for velocity_pd) and set scheduler T_max accordingly
+    pd_max_iters = None
+    if args.modeltype == "velocity_pd":
+        pd_max_iters = modelparams.get("training_kwargs", {}).get("max_iters")
+        if args.max_iters is not None:
+            pd_max_iters = args.max_iters
+    T_max = pd_max_iters if pd_max_iters is not None else 500
+    # lr_scheduler = CosineAnnealingLR(optimizer, T_max=T_max, eta_min=modelparams["lr_min"])
     writer = SummaryWriter(f"{args.experiment}/runs")
     dataset_train = params["dataset"]["cls"](mode = "train", **params["dataset"]["kwargs"])
     dataset_test  = params["dataset"]["cls"](mode = "test" , **params["dataset"]["kwargs"])
@@ -135,15 +161,37 @@ if __name__ == "__main__":
             "iter": ctr_init + ctr
         })
 
+        # lr_scheduler.step()
         for k, v in update.items():
             writer.add_scalars(f"{args.modeltype}/{k}", v, ctr_init + ctr)
 
-        # lr_scheduler.step()
-        
-        if ctr % 500 == 0: 
+        # Stop only for velocity_pd if a max-iteration budget is specified
+        if pd_max_iters is not None and (ctr_init + ctr + 1) >= pd_max_iters:
+            # Final save on exit (student-only state)
+            full_state_dict = model.state_dict()
+            student_state_dict = {k: v for k, v in full_state_dict.items() if not k.startswith("teacher_velocity.")}
+            serialized_state = {
+                "model": student_state_dict,
+                "optimizer": { k: o.state_dict() for k,o in optimizers.items() },
+                "time_passed": time_passed,
+                "tensorboard_ctr": ctr_init + ctr + 1,
+            }
+            print(f"reached max iters ({pd_max_iters}); saving final checkpoint @ {state_path}")
+            torch.save(serialized_state, state_path)
             timestamp = datetime.datetime.now().isoformat().split(".")[0].replace(":","_").replace("-","_")
-           
+            print(f"saving final checkpoint @ {args.experiment}/checkpoints/state_{args.modeltype}_{timestamp}.pt")
+            torch.save(serialized_state, f"{args.experiment}/checkpoints/state_{args.modeltype}_{timestamp}.pt")
+            break
+        
+        if ctr % 10000 == 0: 
+            timestamp = datetime.datetime.now().isoformat().split(".")[0].replace(":","_").replace("-","_")
+            
+            #Only save student model (without teacher)
+            full_state_dict = model.state_dict()
+            student_state_dict = {k: v for k, v in full_state_dict.items() if not k.startswith("teacher_velocity.")}
+                    
             serialized_state = { 
+                # "model": student_state_dict,
                 "model": model.state_dict(),
                 "optimizer": { k: o.state_dict() for k,o in optimizers.items() },
                 "time_passed": time_passed,
