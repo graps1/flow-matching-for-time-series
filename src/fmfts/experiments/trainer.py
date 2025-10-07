@@ -172,12 +172,12 @@ if __name__ == "__main__":
             torch.save(serialized_state, f"{args.experiment}/checkpoints/state_{args.modeltype}_{timestamp}.pt")
             break
         
-        if ctr % 10000 == 0: 
+        if ctr % 1000 == 0: 
             timestamp = datetime.datetime.now().isoformat().split(".")[0].replace(":","_").replace("-","_")
             
             #Only save student model (without teacher)
             full_state_dict = model.state_dict()
-            student_state_dict = {k: v for k, v in full_state_dict.items() if not k.startswith("teacher_velocity.")}
+            # student_state_dict = {k: v for k, v in full_state_dict.items() if not k.startswith("teacher_velocity.")}
                     
             serialized_state = { 
                 # "model": student_state_dict,

@@ -16,7 +16,7 @@ class SingleStepModel(TimeSeriesModel):
     def compute_loss(self, y1, x1, steps=10, method="midpoint"):
         x0 = self.p0.sample(x1.shape).to(x1.device)
 
-        F_multistep = torch.no_grad(self.v.sample)(y1, x0=x0, steps=steps, method=method)
+        F_multistep = torch.no_grad(self.v.sample)(y1, x0=x0, steps=steps, method=method).detach()
         F_single = self(x0, y1)
         if self.loss_fn == "l2": loss = ( F_multistep - F_single ).pow(2).mean()
         elif self.loss_fn == "l1": loss = ( F_multistep - F_single ).abs().mean()

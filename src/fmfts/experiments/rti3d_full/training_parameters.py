@@ -45,7 +45,7 @@ params = {
     },
     "add": {
         "training_kwargs": { 
-            "w_distillation": 0.0,
+            "w_distillation": 0.9,
             "w_R1": 25.,
             "generator_rate": 1,
         },
