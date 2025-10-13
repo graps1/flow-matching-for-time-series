@@ -75,13 +75,15 @@ class DatasetNS2D(Dataset):
         if ax is None: _, ax = plt.subplots(1, 5, figsize=(12, 2.5), sharey=True, sharex=True)
         for i in range(n_plots := len(ax)):
             k = i * len(x) // n_plots
+            if visualization == "density": 
+                ax[i].imshow(x[k,2].cpu().numpy(), extent=(0,1,0,1), cmap="coolwarm" ) #, vmin=0.0, vmax=1.0)
             if visualization == "speed": 
                 speed = self.compute_speed(x[k])
                 ax[i].imshow(speed.cpu().numpy(), extent=(0,1,0,1), vmin=0, vmax=2)
             if visualization == "sqrt_energy": 
                 sqrt_energy = self.compute_energy(x[k])**0.5
                 ax[i].imshow(sqrt_energy.cpu().numpy(), extent=(0,1,0,1), vmin=0.0, vmax=1.7, cmap="viridis")
-            elif visualization == "streamlines":
+            if visualization == "streamlines":
                 speed = self.compute_speed(x[k]).cpu().numpy()
                 norm = Normalize(vmin=0, vmax=4.5, clip=True)
                 ax[i].streamplot(X, Y, x[k,1].cpu().numpy(), x[k,0].cpu().numpy(), density=1.5, 
