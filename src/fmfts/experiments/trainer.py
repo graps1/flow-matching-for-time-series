@@ -20,7 +20,7 @@ experiment2params = {
     "ns2d": ns2d_params,
     "ks2d": ks2d_params,
 }
-modeltypes = [ "velocity", "single_step", "flow", "rectifier", "add", "velocity_pd" ]
+modeltypes = [ "velocity", "single_step", "flow", "rectifier", "add", "velocity_pd", "deterministic" ]
 
 if __name__ == "__main__":
     torch.set_default_device("cuda")

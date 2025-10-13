@@ -5,6 +5,21 @@ from fmfts.utils.models.cfm_velocity import VelocityModel
 from fmfts.utils.models.cfm_flow import FlowModel
 from fmfts.utils.models.cfm_single_step import SingleStepModel
 from fmfts.utils.models.cfm_velocity_pd import DistilledVelocityMixin
+from fmfts.utils.models.deterministic import DeterministicModel
+
+class DeterministicModelNS2D(DeterministicModel):
+    def __init__(self, features=(64, 96, 128)):
+        super().__init__()
+        self.n_channels = 4
+        self.unet = UNet(
+                self.n_channels, self.n_channels,
+                features=features,
+                padding=("circular", "circular"),
+                nl=torch.nn.ReLU())
+        
+    def forward(self, y):
+        x = self.unet(y)
+        return x 
 
 class VelocityModelNS2D(VelocityModel):
     def __init__(self, p0=torch.distributions.Normal(0, 1), features=(64, 96, 128), loss="l2"):

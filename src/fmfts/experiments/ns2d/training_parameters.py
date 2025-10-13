@@ -3,6 +3,7 @@ from fmfts.experiments.ns2d.models import (
     SingleStepModelNS2D,
     FlowModelNS2D,
     VelocityPDNS2D,  
+    DeterministicModelNS2D
 )
 from fmfts.dataloader.ns2d import DatasetNS2D
 from fmfts.utils.models.add import AdversarialDiffusionDistillation
@@ -49,6 +50,21 @@ params = {
         "lr_min": 1e-5,
         "cls": SingleStepModelNS2D,
     },
+    "deterministic": {
+        "model_kwargs": { 
+            "features": (128, 196, 196),
+        },
+        "training_kwargs": {
+            "batch_size": 32,
+        },
+        "optimizer_init": {
+            "lr": 1e-4,
+        },
+        "cls": DeterministicModelNS2D,
+    },
+
+    # PROGRESSIVE DISTILLATION (PD) SETTINGS
+
     "velocity_pd": {
         "cls": VelocityPDNS2D,
         "model_kwargs": {
@@ -80,7 +96,7 @@ params = {
     },
     "add": {
         "training_kwargs": { 
-            "w_distillation": 0.0,
+            "w_distillation": 0.9,
             "w_R1": 10.,
             "generator_rate": 1,
         },

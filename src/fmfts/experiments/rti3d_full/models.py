@@ -4,6 +4,33 @@ from fmfts.utils.unet import UNet
 from fmfts.utils.models.cfm_velocity import VelocityModel
 from fmfts.utils.models.cfm_single_step import SingleStepModel
 from fmfts.utils.models.cfm_flow import FlowModel
+from fmfts.utils.models.deterministic import DeterministicModel
+
+class DeterministicModelFullRTI3D(DeterministicModel):
+    def __init__(self, 
+                 features=(64, 96, 128), 
+                 include_timestamp=True, 
+                 include_vertical_position=True):
+        super().__init__()
+        self.include_timestamp = include_timestamp
+        self.include_vertical_position = include_vertical_position
+        self.n_channels = 4 + self.include_timestamp
+        self.unet = UNet(
+                self.n_channels + self.include_vertical_position, self.n_channels,
+                features=features,
+                padding=("circular", "circular", "zeros"),
+                nl=torch.nn.ReLU())
+        
+    def forward(self, y):
+        if self.include_vertical_position:
+            bs, _, width, depth, height = y.shape
+            pos = torch.linspace(0, 1, height)
+            pos = pos.view(1, 1, 1, 1, height)
+            pos = pos.expand(bs, 1, width, depth, height)
+            y = torch.cat([y, pos], dim=1)
+
+        x = self.unet(y)
+        return x 
 
 class VelocityModelFullRTI3D(VelocityModel):
     def __init__(self, 
