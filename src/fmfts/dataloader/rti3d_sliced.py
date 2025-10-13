@@ -104,8 +104,10 @@ class DatasetSlicedRTI3D(Dataset):
 
         for i in range(len(ax)):
             k = i * len(x) // len(ax)
-            density = x[k,-1].clip(min=0)
-            ax[i].imshow(density.cpu().numpy(), extent=(0,1,0,1), cmap="coolwarm", vmin=self.rho2, vmax=self.rho1)
+            velocity = x[k,:3].cpu().numpy()
+            density = x[k,-1].clip(min=0).cpu().numpy()
+            # sqrt_energy = density * (velocity[0]**2 + velocity[1]**2 + velocity[2]**2)
+            ax[i].imshow(density, extent=(0,1,0,1), cmap="coolwarm", vmin=self.rho2, vmax=self.rho1)
 
             ax[i].set_xlim(0,1)
             ax[i].set_ylim(0,1)
