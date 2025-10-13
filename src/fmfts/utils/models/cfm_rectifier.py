@@ -18,7 +18,7 @@ class Rectifier(TimeSeriesModel):
     def forward(self, x, y, tx):
         return self.rectified_velocity_model.forward(x, y, tx)
         
-    def compute_loss(self, y1, x1, ctr, steps=10, method="midpoint"):
+    def compute_loss(self, y1, x1, steps=10, method="midpoint"):
         # x1 is ignored, but I'm still using it for consistency w/ other methods
         x0 = self.base_velocity_model.p0.sample(y1.shape).to(y1.device)
         x1 = torch.no_grad(self.base_velocity_model.sample)(y1, x0=x0, steps=steps, method=method)
@@ -33,26 +33,26 @@ class Rectifier(TimeSeriesModel):
         elif self.base_velocity_model.loss_fn == "sobolev": loss = sobolev(v - (x1 - x0), alpha=1.0, beta=1.0, t=tx)
         return loss
 
-    def train_model(self, dataset, opt, batch_size=8, steps = 10, method = "midpoint"):
-        dataloader = DataLoader(
-            dataset, 
-            batch_size=batch_size, 
-            shuffle=True, 
-            num_workers=0,  
-            generator=torch.Generator(device='cuda'))
+    # def train_model(self, dataset, opt, batch_size=8, steps = 10, method = "midpoint"):
+    #     dataloader = DataLoader(
+    #         dataset, 
+    #         batch_size=batch_size, 
+    #         shuffle=True, 
+    #         num_workers=0,  
+    #         generator=torch.Generator(device='cuda'))
 
-        dataiter = iter(dataloader)
+    #     dataiter = iter(dataloader)
 
-        ctr = 0
-        while True:
-            try:    y1, _ = next(dataiter)
-            except: y1, _ = next(dataiter := iter(dataloader))
+    #     ctr = 0
+    #     while True:
+    #         try:    y1, _ = next(dataiter)
+    #         except: y1, _ = next(dataiter := iter(dataloader))
 
-            opt.zero_grad()
-            loss = self.compute_loss(y1, None, ctr, steps=steps, method=method)
-            loss.backward()
-            opt.step()
+    #         opt.zero_grad()
+    #         loss = self.compute_loss(y1, None, ctr, steps=steps, method=method)
+    #         loss.backward()
+    #         opt.step()
 
-            ctr += 1
-            yield loss
+    #         ctr += 1
+    #         yield loss
 

@@ -43,8 +43,8 @@ params = {
     },
     "rectifier": {
         "training_kwargs": {
-            "batch_size": 1,
-            "steps": 20, 
+            "batch_size": 8,
+            "steps": 10, 
             "method": "midpoint",
         },
         "optimizer_init": { "lr": 1e-5 },
