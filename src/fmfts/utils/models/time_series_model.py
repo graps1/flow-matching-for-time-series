@@ -3,15 +3,6 @@ from torch.utils.data import DataLoader
 
 class TimeSeriesModel(torch.nn.Module):
 
-    def compute_loss(self, y1, x1):
-        raise NotImplementedError()
-    
-    def forward(self, x, y, tx):
-        raise NotImplementedError()
-
-    def sample(self, y1, x0=None, **kwargs):
-        raise NotImplementedError()
-
     def additional_info(self):
         return {}
     
@@ -34,6 +25,15 @@ class TimeSeriesModel(torch.nn.Module):
         for g in optimizers["self"].param_groups:
             g["lr"] = lr
             g["initial_lr"] = lr
+
+    def compute_loss(self, y1, x1, **kwargs):
+        raise NotImplementedError()
+    
+    def forward(self, x, y, tx):
+        raise NotImplementedError()
+
+    def sample(self, y1, x0=None, **kwargs):
+        raise NotImplementedError()
 
     def train_model(self, dataset_train, dataset_test, optimizers, batch_size=8, **kwargs):
         dataloader_train = DataLoader(

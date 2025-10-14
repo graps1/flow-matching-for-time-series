@@ -34,9 +34,10 @@ params = {
     },
 
     "add": {
-        "training_kwargs": { 
-            "w_distillation": 0.9,
-            "w_R1": 25.,
+        "training_kwargs": { "batch_size": 8, },
+        "model_kwargs": { 
+            "lmbda": 0.9,
+            "gamma": 25.,
             "generator_rate": 1,
         },
         "optimizer_init": { "lr_G": 1e-6, "lr_D": 5e-5 },
