@@ -8,6 +8,9 @@ class TimeSeriesModel(torch.nn.Module):
     
     def forward(self, x, y, tx):
         raise NotImplementedError()
+
+    def sample(self, y1, x0=None, **kwargs):
+        raise NotImplementedError()
     
     def init_optimizers(self, lr):
         return { "self": torch.optim.AdamW(self.parameters(), lr=lr, weight_decay=0.0) }

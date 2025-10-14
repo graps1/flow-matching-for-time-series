@@ -33,6 +33,9 @@ class AdversarialDiffusionDistillation(torch.nn.Module):
         assert mode in ["critic", "generator" ]
         if mode == "critic":    return self.D(x,y)
         if mode == "generator": return self.G(x,y)
+    
+    def sample(self, y1, x0=None, **kwargs):
+        return self.G(x=x0, y=y1)
 
     def G(self, x, y): return x + self.G_(x,y,torch.zeros(len(x)))
     # def D(self, x, y): return self.D_(torch.cat((x,y),dim=1)) # self.D_(x,y,torch.zeros(len(x)))

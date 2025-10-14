@@ -9,3 +9,6 @@ class DeterministicModel(TimeSeriesModel):
     def compute_loss(self, y1, x1):
         loss = ( self(y1) - x1 ).pow(2).mean()
         return loss
+
+    def sample(self, y1, x0=None, **kwargs):
+        return self(y1)
