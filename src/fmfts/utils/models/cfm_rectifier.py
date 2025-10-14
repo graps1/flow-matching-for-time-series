@@ -17,6 +17,9 @@ class Rectifier(TimeSeriesModel):
 
     def forward(self, x, y, tx):
         return self.rectified_velocity_model.forward(x, y, tx)
+    
+    def sample(self, y, x0=None, steps=10, method="midpoint"):
+        return self.base_velocity_model.sample(y, x0=x0, steps=steps, method=method)
         
     def compute_loss(self, y1, x1, steps=10, method="midpoint"):
         # x1 is ignored, but I'm still using it for consistency w/ other methods

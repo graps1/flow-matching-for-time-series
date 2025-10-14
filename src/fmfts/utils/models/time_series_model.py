@@ -11,6 +11,20 @@ class TimeSeriesModel(torch.nn.Module):
 
     def sample(self, y1, x0=None, **kwargs):
         raise NotImplementedError()
+
+    def additional_info(self):
+        raise NotImplementedError()
+    
+    def __repr__(self):
+        info = self.additional_info()
+        info_str = ", ".join(f"{key}={value}" for key, value in info.items())
+        return f"{self.__class__.__name__}({info_str})"
+    
+    @property
+    def filename(self):
+        info = self.additional_info()
+        info_str = "_".join(f"{key}{value}" for key, value in info.items())
+        return f"{self.__class__.__name__}_{info_str}.pt"
     
     def init_optimizers(self, lr):
         return { "self": torch.optim.AdamW(self.parameters(), lr=lr, weight_decay=0.0) }

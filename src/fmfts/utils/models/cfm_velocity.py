@@ -23,31 +23,42 @@ class VelocityModel(TimeSeriesModel):
         if self.loss_fn == "l2":      loss = ( v - (x1 - x0) ).pow(2).mean()
         elif self.loss_fn == "sobolev": loss = sobolev(v - (x1 - x0), alpha=1.0, beta=1.0, t=tx)
         return loss
+    
+    def integrate(self, y1, x, t=0.0, dt=1.0, steps = 10, method="midpoint"):
+        if isinstance(dt, torch.Tensor) or isinstance(steps, torch.Tensor):
+            dt_small = (dt / steps).expand(len(y1))
+        else:
+            dt_small = torch.full((len(y1),), dt/steps)
 
-    def sample(self, y1, x0=None, steps=10, method="midpoint", c_ml = 0.0):
-        assert method in ["euler", "rk4", "midpoint"]
-        if x0 is None: x0 = self.p0.sample(y1.shape).to(y1.device)
+        # dt = torch.tensor(1/steps).expand(len(y1))
+        dt_small_ = dt_small.view(-1, *[1]*(y1.dim()-1))
 
-        def v(x, y, t):
-            vel = self(x, y, t)
-            score = t.view(-1,*[1]*(x.dim()-1))*vel - x
-            return vel + c_ml * score
-        
-        x = x0
-        dt = torch.tensor(1/steps).expand(len(y1))
-        dt_ = dt.view(-1, *[1]*(y1.dim()-1))
         for i in range(steps):
             if method == "euler":
-                x = x + dt_ * v(x, y1, i*dt)
+                x = x + dt_small_ * self(x, y1, t + i*dt_small)
             elif method == "midpoint":
-                k0 = x + dt_/2 * v(x,  y1, i*dt)
-                k1 = x + dt_   * v(k0, y1, (i+0.5)*dt)
+                k0 = x + dt_small_/2 * self(x,  y1, t + i*dt_small)
+                k1 = x + dt_small_   * self(k0, y1, t + (i+0.5)*dt_small)
                 x = k1
             elif method == "rk4":
-                k0 = v(x, y1, i*dt)
-                k1 = v(x + dt_/2*k0, y1, (i+0.5)*dt)
-                k2 = v(x + dt_/2*k1, y1, (i+0.5)*dt)
-                k3 = v(x + dt_*k2, y1, i*dt)
-                x = x + dt_/6*(k0+2*k1+2*k2+k3)
+                k0 = self(x, y1, i*dt_small)
+                k1 = self(x + dt_small_/2*k0, y1, t + (i+0.5)*dt_small)
+                k2 = self(x + dt_small_/2*k1, y1, t + (i+0.5)*dt_small)
+                k3 = self(x + dt_small_*k2, y1, t + i*dt_small)
+                x = x + dt_small_/6*(k0+2*k1+2*k2+k3)
 
         return x
+
+    def sample(self, y1, x0=None, steps=10, method="midpoint"):
+        assert method in ["euler", "rk4", "midpoint"]
+        if x0 is None: x0 = self.p0.sample(y1.shape).to(y1.device)
+        return self.integrate(y1, x0, t=0.0, dt=1.0, steps=steps, method=method)
+
+        # def v(x, y, t):
+        #     vel = self(x, y, t)
+        #     score = t.view(-1,*[1]*(x.dim()-1))*vel - x
+        #     return vel + c_ml * score
+        
+        x = x0
+
+        # return x
