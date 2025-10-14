@@ -1,7 +1,6 @@
 from fmfts.experiments.ns2d.models import (
     VelocityModelNS2D,
     SingleStepModelNS2D,
-    FlowModelNS2D,
     DeterministicModelNS2D
 )
 from fmfts.dataloader.ns2d import DatasetNS2D
@@ -9,19 +8,6 @@ from fmfts.utils.models.add import AdversarialDiffusionDistillation
 
 
 params = {
-    "flow": {
-        "model_kwargs": { 
-            "loss": "l2",
-        },
-        "training_kwargs": {
-            "batch_size": 32,
-            "steps": 10,
-            "p_geometric": 0.99
-        },
-        "lr_max": 1e-4,
-        "lr_min": 1e-4,
-        "cls": FlowModelNS2D,
-    },
     "velocity": {
         "model_kwargs": {
             "features": (128, 196, 196),

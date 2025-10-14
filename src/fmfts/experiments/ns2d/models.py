@@ -2,7 +2,6 @@ import torch
 import copy
 from fmfts.utils.unet import UNet
 from fmfts.utils.models.cfm_velocity import VelocityModel
-from fmfts.utils.models.cfm_flow import FlowModel
 from fmfts.utils.models.cfm_single_step import SingleStepModel
 from fmfts.utils.models.deterministic import DeterministicModel
 
@@ -33,18 +32,6 @@ class VelocityModelNS2D(VelocityModel):
     def forward(self, x, y, tx):
         tx = tx.view(-1, 1, 1, 1).expand(-1, 1, *x.shape[2:])
         x = self.unet(torch.cat([x, y, tx], dim=1))
-        return x 
-
-class FlowModelNS2D(FlowModel):
-    def __init__(self, velocity_model, p0=torch.distributions.Normal(0, 1), loss="l2"):
-        super().__init__(velocity_model, p0=p0, loss=loss)
-        self.phi_net = velocity_model.unet.clone_and_adapt(additional_in_channels=1) 
-
-    def phi(self, x, y, tx, delta):
-        delta = torch.zeros_like(delta)
-        tx = tx.view(-1, 1, 1, 1).expand(-1, -1, *x.shape[2:])
-        delta = delta.view(-1, 1, 1, 1).expand(-1, -1, *x.shape[2:])
-        x = self.phi_net(torch.cat([x, y, tx, delta], dim=1))
         return x 
 
 class SingleStepModelNS2D(SingleStepModel):

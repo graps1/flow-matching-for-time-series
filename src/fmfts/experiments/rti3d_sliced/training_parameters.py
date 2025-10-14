@@ -1,22 +1,10 @@
-from fmfts.experiments.rti3d_sliced.models import VelocityModelSlicedRTI3D, \
-                                                  SingleStepModelSlicedRTI3D, \
-                                                  FlowModelSlicedRTI3D
+from fmfts.experiments.rti3d_sliced.models import (VelocityModelSlicedRTI3D, 
+                                                   SingleStepModelSlicedRTI3D)
 from fmfts.dataloader.rti3d_sliced import DatasetSlicedRTI3D
 from fmfts.utils.models.cfm_rectifier import Rectifier
 from fmfts.utils.models.add import AdversarialDiffusionDistillation
 
 params = {
-    "flow": {
-        "model_kwargs": { 
-            "loss": "l2",
-        },
-        "training_kwargs": {
-            "batch_size": 4,
-            "steps": 4,
-        },
-        "optimizer_init": { "lr": 1e-5 },
-        "cls": FlowModelSlicedRTI3D,
-    },
     "velocity": {
         "model_kwargs": {
             "features": (128, 256, 256, 128),

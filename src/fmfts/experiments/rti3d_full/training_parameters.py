@@ -8,18 +8,6 @@ from fmfts.utils.models.cfm_rectifier import Rectifier
 
 
 params = {
-    "flow": {
-        "model_kwargs": { 
-            "loss": "l2",
-        },
-        "training_kwargs": {
-            "batch_size": 4,
-            "steps": 4,
-        },
-        "lr_max": 1e-5,
-        "lr_min": 1e-5,
-        "cls": FlowModelFullRTI3D,
-    },
     "velocity": {
         "model_kwargs": {
             "features": (128, 196),
