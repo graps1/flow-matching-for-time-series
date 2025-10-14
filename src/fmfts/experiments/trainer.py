@@ -7,7 +7,7 @@ import argparse
 import pprint
 
 from fmfts.utils.models.cfm_rectifier import Rectifier
-from fmfts.utils.models.cfm_velocity_pd import ProgressiveDistillation
+from fmfts.utils.models.cfm_prog_dist import ProgressiveDistillation
 
 from fmfts.experiments.rti3d_sliced.training_parameters import params as rti3d_sliced_params
 from fmfts.experiments.rti3d_full.training_parameters import params as rti3d_full_params
@@ -20,7 +20,7 @@ experiment2params = {
     "ns2d": ns2d_params,
     "ks2d": ks2d_params,
 }
-modes = [ "velocity", "single_step", "flow", "rectifier", "add", "velocity_pd", "deterministic" ]
+modes = [ "velocity", "single_step", "flow", "rectifier", "add", "prog_dist", "deterministic" ]
 
 if __name__ == "__main__":
     torch.set_default_device("cuda")
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     parser.add_argument("--new", "-n", help="creates and trains a new model", action="store_true")
     parser.add_argument("--checkpoint", "-c", help="the savefile to load", default="")
     parser.add_argument("--velocity", "-v", help="the savefile to load the velocity model from (if necessary for distillation)", default=None)
-    parser.add_argument("--advance", "-a", help="whether to continue training or to advance to the next level (only for rectifier or velocity_pd)", action="store_true")
+    parser.add_argument("--advance", "-a", help="whether to continue training or to advance to the next level (only for rectifier or prog_dist)", action="store_true")
     parser.add_argument("--max-iter", "-m", help="maximum number of iterations to train for", type=int, default=1000000)
 
     args = parser.parse_args()
@@ -62,10 +62,10 @@ if __name__ == "__main__":
     # adds class to modelparams (it's the same for all experiments)
     # for wrappers such as Rectifier and ProgressiveDistillation
     if args.mode == "rectifier":   modelparams["cls"] = Rectifier
-    if args.mode == "velocity_pd": modelparams["cls"] = ProgressiveDistillation
+    if args.mode == "prog_dist": modelparams["cls"] = ProgressiveDistillation
     
     # loads velocity model
-    if args.mode in ["flow", "single_step", "rectifier", "add", "velocity_pd"]:
+    if args.mode in ["flow", "single_step", "rectifier", "add", "prog_dist"]:
         try:    
             serialized_state_velocity = torch.load(args.velocity, weights_only=True)
             velocity_model = params["velocity"]["cls"](**params["velocity"]["model_kwargs"])
@@ -88,13 +88,13 @@ if __name__ == "__main__":
     if not args.new:
         serialized_state =  torch.load(args.checkpoint, weights_only=True)
         time_passed_init = serialized_state["time_passed"]
-        model.load_state_dict(serialized_state["model"], strict = args.mode != "velocity_pd")
+        model.load_state_dict(serialized_state["model"], strict = args.mode != "prog_dist")
         ctr_init = serialized_state.get("tensorboard_ctr", 0)
         for k, o in optimizers.items(): o.load_state_dict(serialized_state["optimizer"][k])
         model.update_optimizers(optimizers, **modelparams["optimizer_init"])
         print(f"loaded serialized state (path: {args.checkpoint})")
 
-    if args.advance and args.mode in ["rectifier", "velocity_pd"]:
+    if args.advance and args.mode in ["rectifier", "prog_dist"]:
         print("advancing to the next level.")
         model.advance()
 
