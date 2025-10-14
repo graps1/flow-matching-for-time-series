@@ -11,11 +11,6 @@ class AdversarialDiffusionDistillation(torch.nn.Module):
         self.v  = copy.deepcopy(velocity_model)
         self.G_ = copy.deepcopy(velocity_model)
         self.D_ = copy.deepcopy(velocity_model)
-        # self.D_ = torch.nn.Sequential(
-        #     ResNet(in_channels=2*5, out_channels=128, features=(64, 96, 96, 128), padding=("circular", "zeros"), nl=torch.nn.ReLU()),
-        #     torch.nn.Flatten(),
-        #     torch.nn.LazyLinear(out_features=64)
-        # )
     
     def init_optimizers(self, lr_G = 1e-5, lr_D = 1e-4):
         return { "G": torch.optim.Adam(self.G_.parameters(), lr=lr_G, betas=[0., 0.99]), 
@@ -38,8 +33,6 @@ class AdversarialDiffusionDistillation(torch.nn.Module):
         return self.G(x=x0, y=y1)
 
     def G(self, x, y): return x + self.G_(x,y,torch.zeros(len(x)))
-    # def D(self, x, y): return self.D_(torch.cat((x,y),dim=1)) # self.D_(x,y,torch.zeros(len(x)))
-    # def D(self, x, y): return self.D_(x,y,torch.zeros(len(x)))
     def D(self, x, y): return self.D_(x,y,torch.zeros(len(x))).flatten(start_dim=1).mean(dim=1)
             
     def train_model(self, dataset_train, dataset_test, optimizers, batch_size=8, w_distillation = 0.5, w_R1 = 1e-4, generator_rate=10, **kwargs):
@@ -91,9 +84,6 @@ class AdversarialDiffusionDistillation(torch.nn.Module):
 
             
             opt_D.zero_grad()
-            # d_fake = self.D(x1_fake.detach(), y1)
-            # R1 = torch.func.grad( lambda x: self.D(x, y1).mean() )(x1).pow(2).sum()
-            # loss_D = w_R1 * R1 + torch.clip(1 - d_fake, min=0).mean() + torch.clip(1 + d_real, min=0).mean()
             d_fake = self.D(x1_fake.detach(), y1)
             R1 = torch.func.grad( lambda x1: self.D(x1, y1).sum() )(x1).pow(2).mean(dim=0).sum()
             loss_D = w_R1 * R1 + torch.clip(1 - d_fake, min=0).mean() + torch.clip(1 + d_real, min=0).mean()

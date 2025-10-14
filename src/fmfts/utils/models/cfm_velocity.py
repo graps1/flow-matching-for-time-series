@@ -9,7 +9,7 @@ class VelocityModel(TimeSeriesModel):
     def forward(self, x, y, tx):
         raise NotImplementedError()
 
-    def compute_loss(self, y1, x1, ctr, x0=None):
+    def compute_loss(self, y1, x1, x0=None):
         bs = y1.shape[0] 
         if x0 is None: x0 = self.p0.sample(x1.shape).to(x1.device)
         tx = torch.rand(bs)
