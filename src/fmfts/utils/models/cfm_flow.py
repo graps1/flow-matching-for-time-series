@@ -1,17 +1,12 @@
 import torch 
-import copy
-from torch.distributions.categorical import Categorical
 from fmfts.utils.models.time_series_model import TimeSeriesModel
-from fmfts.utils.loss_fn import sobolev
 
 torch.set_printoptions(precision=4, sci_mode=True)
 
 class FlowModel(TimeSeriesModel):
-    def __init__(self, v, p0=torch.distributions.Normal(0,1), loss="l2"):
+    def __init__(self, v, p0=torch.distributions.Normal(0,1)):
         super().__init__()
-        assert loss in ["l1", "l2", "sobolev", "PINN"]
         self.p0 = p0
-        self.loss_fn = loss
         self.errors_by_step = torch.nn.Parameter(torch.ones(20), requires_grad=False)
 
         self.v = v

@@ -1,13 +1,10 @@
 import torch
 from fmfts.utils.models.time_series_model import TimeSeriesModel
-from fmfts.utils.loss_fn import sobolev
 
 class VelocityModel(TimeSeriesModel):
-    def __init__(self, p0=torch.distributions.Normal(0,1), loss="l2"):
+    def __init__(self, p0=torch.distributions.Normal(0,1)):
         super().__init__()
         self.p0 = p0 
-        self.loss_fn = loss
-        assert self.loss_fn in ["l2", "sobolev"], "loss must be either 'l2' or 'sobolev'"
 
     def forward(self, x, y, tx):
         raise NotImplementedError()
@@ -20,8 +17,7 @@ class VelocityModel(TimeSeriesModel):
         x = (1 - tx_)*x0 + tx_*x1
 
         v = self.forward(x, y1, tx)
-        if self.loss_fn == "l2":      loss = ( v - (x1 - x0) ).pow(2).mean()
-        elif self.loss_fn == "sobolev": loss = sobolev(v - (x1 - x0), alpha=1.0, beta=1.0, t=tx)
+        loss = ( v - (x1 - x0) ).pow(2).mean()
         return loss
     
     def integrate(self, y1, x, t=0.0, dt=1.0, steps = 10, method="midpoint"):
