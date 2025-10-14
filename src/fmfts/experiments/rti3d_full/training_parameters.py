@@ -4,6 +4,7 @@ from fmfts.experiments.rti3d_full.models import VelocityModelFullRTI3D, \
                                                   DeterministicModelFullRTI3D
 from fmfts.dataloader.rti3d_full import DatasetFullRTI3D
 from fmfts.utils.models.add import AdversarialDiffusionDistillation
+from fmfts.utils.models.cfm_rectifier import Rectifier
 
 
 params = {
@@ -43,6 +44,15 @@ params = {
         "lr_max": 1e-5,
         "lr_min": 1e-5,
         "cls": SingleStepModelFullRTI3D
+    },
+    "rectifier": {
+        "training_kwargs": {
+            "batch_size": 8,
+            "steps": 10, 
+            "method": "midpoint",
+        },
+        "optimizer_init": { "lr": 1e-5 },
+        "cls": Rectifier
     },
     "add": {
         "training_kwargs": { 

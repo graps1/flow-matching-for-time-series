@@ -8,6 +8,7 @@ from fmfts.experiments.ns2d.models import (
 from fmfts.dataloader.ns2d import DatasetNS2D
 from fmfts.utils.models.add import AdversarialDiffusionDistillation
 from fmfts.utils.models.cfm_velocity_pd import uniform_delta_sampler, fixed_macrostep_sampler, beta_delta_sampler
+from fmfts.utils.models.cfm_rectifier import Rectifier
 
 
 params = {
@@ -62,6 +63,29 @@ params = {
         },
         "cls": DeterministicModelNS2D,
     },
+    "rectifier": {
+        "training_kwargs": {
+            "batch_size": 8,
+            "steps": 10, 
+            "method": "midpoint",
+        },
+        "optimizer_init": { "lr": 1e-5 },
+        "cls": Rectifier
+    },
+    "add": {
+        "training_kwargs": { 
+            "w_distillation": 0.9,
+            "w_R1": 10.,
+            "generator_rate": 1,
+        },
+        "optimizer_init": { "lr_G": 1e-6, "lr_D": 5e-5 },
+        "cls": AdversarialDiffusionDistillation
+    },
+
+    "dataset": {
+        "cls": DatasetNS2D,
+        "kwargs": {},
+    },
 
     # PROGRESSIVE DISTILLATION (PD) SETTINGS
 
@@ -94,19 +118,7 @@ params = {
         # Typically the base velocity model trained earlier
         "initial_teacher": "state_velocity_teacher1.pt",
     },
-    "add": {
-        "training_kwargs": { 
-            "w_distillation": 0.9,
-            "w_R1": 10.,
-            "generator_rate": 1,
-        },
-        "optimizer_init": { "lr_G": 1e-6, "lr_D": 5e-5 },
-        "cls": AdversarialDiffusionDistillation
-    },
-    "dataset": {
-        "cls": DatasetNS2D,
-        "kwargs": {},
-    },
+
     # Evaluation defaults (overridable via CLI)
     "eval": {
         "common": {
