@@ -2,7 +2,7 @@ import torch
 import copy
 from fmfts.utils.unet import UNet
 from fmfts.utils.models.cfm_velocity import VelocityModel
-from fmfts.utils.models.cfm_single_step import SingleStepModel
+from fmfts.utils.models.cfm_dir_dist import DirectDistillationModel
 from fmfts.utils.models.deterministic import DeterministicModel
 
 class DeterministicModelNS2D(DeterministicModel):
@@ -20,8 +20,8 @@ class DeterministicModelNS2D(DeterministicModel):
         return x 
 
 class VelocityModelNS2D(VelocityModel):
-    def __init__(self, p0=torch.distributions.Normal(0, 1), features=(64, 96, 128), loss="l2"):
-        super().__init__(p0=p0, loss=loss)
+    def __init__(self, p0=torch.distributions.Normal(0, 1), features=(64, 96, 128)):
+        super().__init__(p0=p0)
         self.n_channels = 4
         self.unet = UNet(
                 2*self.n_channels+1, self.n_channels,
@@ -34,9 +34,9 @@ class VelocityModelNS2D(VelocityModel):
         x = self.unet(torch.cat([x, y, tx], dim=1))
         return x 
 
-class SingleStepModelNS2D(SingleStepModel):
-    def __init__(self, velocity_model, p0=torch.distributions.Normal(0, 1), loss="l2"):
-        super().__init__(velocity_model, p0=p0, loss=loss)
+class DirectDistillationModelNS2D(DirectDistillationModel):
+    def __init__(self, velocity_model):
+        super().__init__(velocity_model)
         self.phi_net = copy.deepcopy(velocity_model.unet)
         
     def phi(self, x, y):

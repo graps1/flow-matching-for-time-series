@@ -21,7 +21,7 @@ experiment2params = {
     "ns2d": ns2d_params,
     "ks2d": ks2d_params,
 }
-modes = [ "velocity", "single_step", "flow", "rectifier", "add", "prog_dist", "deterministic" ]
+modes = [ "velocity", "dir_dist", "flow", "rectifier", "add", "prog_dist", "deterministic" ]
 
 if __name__ == "__main__":
     torch.set_default_device("cuda")
@@ -67,7 +67,7 @@ if __name__ == "__main__":
     if args.mode == "add":       modelparams["cls"] = AdversarialDiffusionDistillation
     
     # loads velocity model
-    if args.mode in ["flow", "single_step", "rectifier", "add", "prog_dist"]:
+    if args.mode in ["flow", "dir_dist", "rectifier", "add", "prog_dist"]:
         try:    
             serialized_state_velocity = torch.load(args.velocity, weights_only=True)
             velocity_model = params["velocity"]["cls"](**params["velocity"]["model_kwargs"])

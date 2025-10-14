@@ -1,5 +1,5 @@
 from fmfts.experiments.rti3d_sliced.models import (VelocityModelSlicedRTI3D, 
-                                                   SingleStepModelSlicedRTI3D)
+                                                   DirectDistillationModelSlicedRTI3D)
 from fmfts.dataloader.rti3d_sliced import DatasetSlicedRTI3D
 
 params = {
@@ -15,7 +15,7 @@ params = {
         "optimizer_init": { "lr": 1e-5 },
         "cls": VelocityModelSlicedRTI3D
     },
-    "single_step": {
+    "dir_dist": {
         "model_kwargs": { 
             "loss": "l2",
         },
@@ -25,7 +25,7 @@ params = {
             "method": "midpoint"
         },
         "optimizer_init": { "lr": 1e-5 },
-        "cls": SingleStepModelSlicedRTI3D
+        "cls": DirectDistillationModelSlicedRTI3D
     },
     "rectifier": {
         "training_kwargs": {
@@ -43,6 +43,8 @@ params = {
         },
         "optimizer_init": { "lr_G": 1e-6, "lr_D": 1e-4 },
     },
+
+
     "dataset": {
         "cls": DatasetSlicedRTI3D,
         "kwargs": {

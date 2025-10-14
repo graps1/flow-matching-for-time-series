@@ -2,7 +2,7 @@ import copy
 import torch
 from fmfts.utils.unet import UNet
 from fmfts.utils.models.cfm_velocity import VelocityModel
-from fmfts.utils.models.cfm_single_step import SingleStepModel
+from fmfts.utils.models.cfm_dir_dist import DirectDistillationModel
 
 
 
@@ -11,9 +11,8 @@ class VelocityModelSlicedRTI3D(VelocityModel):
                  p0=torch.distributions.Normal(0, 1), 
                  features=(128, 196, 196, 256),
                  include_timestamp=True,
-                 include_vertical_position=True,
-                 loss = "l2"):
-        super().__init__(p0=p0, loss=loss)
+                 include_vertical_position=True):
+        super().__init__(p0=p0)
         self.include_timestamp = include_timestamp
         self.include_vertical_position = include_vertical_position
         self.n_channels = 4 + self.include_timestamp
@@ -38,12 +37,10 @@ class VelocityModelSlicedRTI3D(VelocityModel):
 
         return self.v_net(z)
 
-class SingleStepModelSlicedRTI3D(SingleStepModel):
+class DirectDistillationModelSlicedRTI3D(DirectDistillationModel):
     def __init__(self, 
-                 velocity_model,
-                 p0=torch.distributions.Normal(0, 1), 
-                 loss = "l2"):
-        super().__init__(v=velocity_model, p0=p0, loss=loss)
+                 velocity_model):
+        super().__init__(v=velocity_model)
         self.include_vertical_position = velocity_model.include_vertical_position
         self.phi_net = copy.deepcopy(velocity_model.v_net)
 

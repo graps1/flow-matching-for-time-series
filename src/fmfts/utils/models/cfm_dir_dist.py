@@ -1,19 +1,18 @@
 import torch 
 from fmfts.utils.models.time_series_model import TimeSeriesModel
 
-class SingleStepModel(TimeSeriesModel):
-    def __init__(self, v, p0=torch.distributions.Normal(0,1)):
+class DirectDistillationModel(TimeSeriesModel):
+    def __init__(self, v):
         super().__init__()
         self.v = v
-        self.p0 = p0
 
     def phi(self, x0, y):
         raise NotImplementedError()
 
     def compute_loss(self, y1, x1, steps=10, method="midpoint"):
-        x0 = self.p0.sample(x1.shape).to(x1.device)
+        x0 = self.v.p0.sample(x1.shape).to(x1.device)
 
-        F_multistep = torch.no_grad(self.v.sample)(y1, x0=x0, steps=steps, method=method).detach()
+        with torch.no_grad(): F_multistep = self.v.sample(y1, x0=x0, steps=steps, method=method)
         F_single = self(x0, y1)
         loss = ( F_multistep - F_single ).pow(2).mean()
         return loss

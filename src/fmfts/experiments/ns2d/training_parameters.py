@@ -1,6 +1,6 @@
 from fmfts.experiments.ns2d.models import (
     VelocityModelNS2D,
-    SingleStepModelNS2D,
+    DirectDistillationModelNS2D,
     DeterministicModelNS2D
 )
 from fmfts.dataloader.ns2d import DatasetNS2D
@@ -19,7 +19,7 @@ params = {
         "lr_min": 1e-5,
         "cls": VelocityModelNS2D,
     },
-    "single_step": {
+    "dir_dist": {
         "model_kwargs": { 
             "loss": "l2",
         },
@@ -30,7 +30,7 @@ params = {
         },
         "lr_max": 5e-5,
         "lr_min": 1e-5,
-        "cls": SingleStepModelNS2D,
+        "cls": DirectDistillationModelNS2D,
     },
     "deterministic": {
         "model_kwargs": { 
@@ -61,7 +61,7 @@ params = {
         },
         "optimizer_init": { "lr_G": 1e-6, "lr_D": 5e-5 },
     },
-    "velocity_pd": {
+    "prog_dist": {
         "model_kwargs": {
             "K": 2,
             "stage": 3,

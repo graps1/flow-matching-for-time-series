@@ -1,5 +1,5 @@
 from fmfts.experiments.rti3d_full.models import VelocityModelFullRTI3D, \
-                                                  SingleStepModelFullRTI3D, \
+                                                  DirectDistillationModelFullRTI3D, \
                                                   DeterministicModelFullRTI3D
 from fmfts.dataloader.rti3d_full import DatasetFullRTI3D
 
@@ -17,7 +17,7 @@ params = {
         "lr_min": 1e-5,
         "cls": VelocityModelFullRTI3D
     },
-    "single_step": {
+    "dir_dist": {
         "model_kwargs": { 
             "loss": "l2",
         },
@@ -28,7 +28,7 @@ params = {
         },
         "lr_max": 1e-5,
         "lr_min": 1e-5,
-        "cls": SingleStepModelFullRTI3D
+        "cls": DirectDistillationModelFullRTI3D
     },
     "rectifier": {
         "training_kwargs": {
