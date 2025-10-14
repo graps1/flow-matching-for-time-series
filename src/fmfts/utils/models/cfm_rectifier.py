@@ -6,10 +6,15 @@ from fmfts.utils.models.cfm_velocity import VelocityModel
 class Rectifier(TimeSeriesModel):
     def __init__(self, velocity_model: VelocityModel):
         super().__init__()
+        self.register_buffer("stage", torch.tensor(0))
         self.rectified_velocity_model = copy.deepcopy(velocity_model)
         self.advance()
+    
+    def additional_info(self):
+        return { "stage": self.stage.item() }
 
     def advance(self):
+        self.stage = self.stage + 1
         self.base_velocity_model = copy.deepcopy(self.rectified_velocity_model)
         for param in self.base_velocity_model.parameters(): param.requires_grad = False
 
@@ -17,7 +22,7 @@ class Rectifier(TimeSeriesModel):
         return self.rectified_velocity_model.forward(x, y, tx)
     
     def sample(self, y, x0=None, steps=10, method="midpoint"):
-        return self.base_velocity_model.sample(y, x0=x0, steps=steps, method=method)
+        return self.rectified_velocity_model.sample(y, x0=x0, steps=steps, method=method)
         
     def compute_loss(self, y1, x1, steps=10, method="midpoint"):
         # x1 is ignored, but I'm still using it for consistency w/ other methods

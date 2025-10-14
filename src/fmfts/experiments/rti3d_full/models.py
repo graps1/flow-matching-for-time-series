@@ -2,7 +2,7 @@ import torch
 import copy
 from fmfts.utils.unet import UNet
 from fmfts.utils.models.cfm_velocity import VelocityModel
-from fmfts.utils.models.cfm_single_step import DirectDistillationModel
+from fmfts.utils.models.cfm_dir_dist import DirectDistillationModel
 from fmfts.utils.models.deterministic import DeterministicModel
 
 class DeterministicModelFullRTI3D(DeterministicModel):
