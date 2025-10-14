@@ -5,31 +5,25 @@ from fmfts.dataloader.rti3d_full import DatasetFullRTI3D
 
 
 params = {
+
     "velocity": {
-        "model_kwargs": {
-            "features": (128, 196),
-            "loss": "l2",
-        },
-        "training_kwargs": {
-            "batch_size": 32,
-        },
-        "lr_max": 1e-5,
-        "lr_min": 1e-5,
+        "model_kwargs": { "features": (128, 196), },
+        "training_kwargs": { "batch_size": 32, },
+        "optimizer_init": { "lr": 1e-5 },
         "cls": VelocityModelFullRTI3D
     },
+
     "dir_dist": {
-        "model_kwargs": { 
-            "loss": "l2",
-        },
+        "model_kwargs": { },
         "training_kwargs": {
             "batch_size": 4,
             "steps": 10,
             "method": "midpoint"
         },
-        "lr_max": 1e-5,
-        "lr_min": 1e-5,
+        "optimizer_init": { "lr": 1e-5 },
         "cls": DirectDistillationModelFullRTI3D
     },
+
     "rectifier": {
         "training_kwargs": {
             "batch_size": 8,
@@ -38,6 +32,7 @@ params = {
         },
         "optimizer_init": { "lr": 1e-5 },
     },
+
     "add": {
         "training_kwargs": { 
             "w_distillation": 0.9,
@@ -46,18 +41,14 @@ params = {
         },
         "optimizer_init": { "lr_G": 1e-6, "lr_D": 5e-5 },
     },
+
     "deterministic": {
-        "model_kwargs": { 
-            "features": (128, 196),
-        },
-        "training_kwargs": {
-            "batch_size": 8,
-        },
-        "optimizer_init": {
-            "lr": 1e-5,
-        },
+        "model_kwargs": { "features": (128, 196), },
+        "training_kwargs": { "batch_size": 8, },
+        "optimizer_init": { "lr": 1e-5, },
         "cls": DeterministicModelFullRTI3D,
     },
+
     "dataset": {
         "cls": DatasetFullRTI3D,
         "kwargs": {
@@ -69,4 +60,5 @@ params = {
             "include_timestamp" : True
         }
     }
+
 }

@@ -7,43 +7,32 @@ from fmfts.dataloader.ns2d import DatasetNS2D
 
 
 params = {
+
     "velocity": {
-        "model_kwargs": {
-            "features": (128, 196, 196),
-            "loss": "l2",
-        },
-        "training_kwargs": {
-            "batch_size": 32,
-        },
-        "lr_max": 1e-5,
-        "lr_min": 1e-5,
+        "model_kwargs": { "features": (128, 196, 196), },
+        "training_kwargs": { "batch_size": 32, },
+        "optimizer_init": { "lr": 1e-4 },
         "cls": VelocityModelNS2D,
     },
+
     "dir_dist": {
-        "model_kwargs": { 
-            "loss": "l2",
-        },
+        "model_kwargs": { },
         "training_kwargs": {
             "batch_size": 32,
             "steps": 10,
             "method": "midpoint",
         },
-        "lr_max": 5e-5,
-        "lr_min": 1e-5,
+        "optimizer_init": { "lr": 1e-4 },
         "cls": DirectDistillationModelNS2D,
     },
+
     "deterministic": {
-        "model_kwargs": { 
-            "features": (128, 196, 196),
-        },
-        "training_kwargs": {
-            "batch_size": 32,
-        },
-        "optimizer_init": {
-            "lr": 1e-4,
-        },
+        "model_kwargs": {  "features": (128, 196, 196), },
+        "training_kwargs": { "batch_size": 32, },
+        "optimizer_init": { "lr": 1e-4 },
         "cls": DeterministicModelNS2D,
     },
+
     "rectifier": {
         "training_kwargs": {
             "batch_size": 8,
@@ -51,31 +40,26 @@ params = {
             "method": "midpoint",
         },
         "optimizer_init": { "lr": 1e-5 },
-        # "cls": Rectifier
     },
+
     "add": {
+        "optimizer_init": { "lr_G": 1e-6, "lr_D": 5e-5 },
         "training_kwargs": { 
             "w_distillation": 0.9,
             "w_R1": 10.,
             "generator_rate": 1,
         },
-        "optimizer_init": { "lr_G": 1e-6, "lr_D": 5e-5 },
     },
+
     "prog_dist": {
-        "model_kwargs": {
-            "K": 2,
-            "stage": 3,
-        },
-        "training_kwargs": {
-            "batch_size": 8,
-        },
-        "optimizer_init": {
-            "lr": 1e-5,
-        },
+        "model_kwargs": { "K": 2, "stage": 3, },
+        "training_kwargs": { "batch_size": 8, },
+        "optimizer_init": { "lr": 1e-5 },
     },
 
     "dataset": {
         "cls": DatasetNS2D,
         "kwargs": {},
     },
+
 }
