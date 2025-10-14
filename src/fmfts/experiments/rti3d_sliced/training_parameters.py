@@ -1,8 +1,6 @@
 from fmfts.experiments.rti3d_sliced.models import (VelocityModelSlicedRTI3D, 
                                                    SingleStepModelSlicedRTI3D)
 from fmfts.dataloader.rti3d_sliced import DatasetSlicedRTI3D
-from fmfts.utils.models.cfm_rectifier import Rectifier
-from fmfts.utils.models.add import AdversarialDiffusionDistillation
 
 params = {
     "velocity": {
@@ -36,7 +34,6 @@ params = {
             "method": "midpoint",
         },
         "optimizer_init": { "lr": 1e-5 },
-        "cls": Rectifier
     },
     "add": {
         "training_kwargs": { 
@@ -45,7 +42,6 @@ params = {
             "generator_rate": 1,
         },
         "optimizer_init": { "lr_G": 1e-6, "lr_D": 1e-4 },
-        "cls": AdversarialDiffusionDistillation
     },
     "dataset": {
         "cls": DatasetSlicedRTI3D,

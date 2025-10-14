@@ -8,6 +8,7 @@ import pprint
 
 from fmfts.utils.models.cfm_rectifier import Rectifier
 from fmfts.utils.models.cfm_prog_dist import ProgressiveDistillation
+from fmfts.utils.models.add import AdversarialDiffusionDistillation
 
 from fmfts.experiments.rti3d_sliced.training_parameters import params as rti3d_sliced_params
 from fmfts.experiments.rti3d_full.training_parameters import params as rti3d_full_params
@@ -61,8 +62,9 @@ if __name__ == "__main__":
 
     # adds class to modelparams (it's the same for all experiments)
     # for wrappers such as Rectifier and ProgressiveDistillation
-    if args.mode == "rectifier":   modelparams["cls"] = Rectifier
+    if args.mode == "rectifier": modelparams["cls"] = Rectifier
     if args.mode == "prog_dist": modelparams["cls"] = ProgressiveDistillation
+    if args.mode == "add":       modelparams["cls"] = AdversarialDiffusionDistillation
     
     # loads velocity model
     if args.mode in ["flow", "single_step", "rectifier", "add", "prog_dist"]:

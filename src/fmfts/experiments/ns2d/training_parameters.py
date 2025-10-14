@@ -4,7 +4,6 @@ from fmfts.experiments.ns2d.models import (
     DeterministicModelNS2D
 )
 from fmfts.dataloader.ns2d import DatasetNS2D
-from fmfts.utils.models.add import AdversarialDiffusionDistillation
 
 
 params = {
@@ -61,7 +60,6 @@ params = {
             "generator_rate": 1,
         },
         "optimizer_init": { "lr_G": 1e-6, "lr_D": 5e-5 },
-        "cls": AdversarialDiffusionDistillation
     },
     "velocity_pd": {
         "model_kwargs": {
