@@ -20,7 +20,7 @@ experiment2params = {
     "ns2d": ns2d_params,
     "ks2d": ks2d_params,
 }
-modeltypes = [ "velocity", "single_step", "flow", "rectifier", "add", "velocity_pd", "deterministic" ]
+modes = [ "velocity", "single_step", "flow", "rectifier", "add", "velocity_pd", "deterministic" ]
 
 if __name__ == "__main__":
     torch.set_default_device("cuda")
@@ -29,18 +29,20 @@ if __name__ == "__main__":
 
     # general settings
     parser.add_argument("experiment", help=f"must be in {list(experiment2params.keys())}")
-    parser.add_argument("modeltype", help=f"must be in {list(modeltypes)}")
+    parser.add_argument("mode", help=f"must be in {list(modes)}")
     parser.add_argument("--new", "-n", help="creates and trains a new model", action="store_true")
     parser.add_argument("--checkpoint", "-c", help="the savefile to load", default="")
     parser.add_argument("--velocity", "-v", help="the savefile to load the velocity model from (if necessary for distillation)", default=None)
+    parser.add_argument("--advance", "-a", help="whether to continue training or to advance to the next level (only for rectifier or velocity_pd)", action="store_true")
+    parser.add_argument("--max-iter", "-m", help="maximum number of iterations to train for", type=int, default=1000000)
 
     args = parser.parse_args()
-    assert args.modeltype in modeltypes, f"modeltype must be in {list(modeltypes)}"
+    assert args.mode in modes, f"mode must be in {list(modes)}"
     assert args.experiment in experiment2params, f"experiment must be in {list(experiment2params.keys())}"
     params = experiment2params[args.experiment]
     
     print("parameters:")
-    modelparams = params.get(args.modeltype, dict())
+    modelparams = params.get(args.mode, dict())
     pprint.pprint(modelparams)
     pprint.pprint(params["dataset"])
 
@@ -59,11 +61,11 @@ if __name__ == "__main__":
 
     # adds class to modelparams (it's the same for all experiments)
     # for wrappers such as Rectifier and ProgressiveDistillation
-    if args.modeltype == "rectifier":   modelparams["cls"] = Rectifier
-    if args.modeltype == "velocity_pd": modelparams["cls"] = ProgressiveDistillation
+    if args.mode == "rectifier":   modelparams["cls"] = Rectifier
+    if args.mode == "velocity_pd": modelparams["cls"] = ProgressiveDistillation
     
     # loads velocity model
-    if args.modeltype in ["flow", "single_step", "rectifier", "add", "velocity_pd"]:
+    if args.mode in ["flow", "single_step", "rectifier", "add", "velocity_pd"]:
         try:    
             serialized_state_velocity = torch.load(args.velocity, weights_only=True)
             velocity_model = params["velocity"]["cls"](**params["velocity"]["model_kwargs"])
@@ -80,24 +82,21 @@ if __name__ == "__main__":
 
 
     #region load state if not new
-    optimizers = model.init_optimizers(**modelparams["optimizer_init"]) # torch.optim.AdamW(model.parameters(), lr=modelparams["lr_max"], weight_decay=0.0)
+    optimizers = model.init_optimizers(**modelparams["optimizer_init"])
     time_passed_init = 0.0
     ctr_init = 0
     if not args.new:
-        serialized_state =  torch.load(args.source, weights_only=True)
+        serialized_state =  torch.load(args.checkpoint, weights_only=True)
         time_passed_init = serialized_state["time_passed"]
-        model.load_state_dict(serialized_state["model"], strict = args.modeltype != "velocity_pd")
+        model.load_state_dict(serialized_state["model"], strict = args.mode != "velocity_pd")
         ctr_init = serialized_state.get("tensorboard_ctr", 0)
         for k, o in optimizers.items(): o.load_state_dict(serialized_state["optimizer"][k])
         model.update_optimizers(optimizers, **modelparams["optimizer_init"])
-        print(f"loaded serialized state (path: {args.source})")
+        print(f"loaded serialized state (path: {args.checkpoint})")
 
-    if isinstance(model, Rectifier):
+    if args.advance and args.mode in ["rectifier", "velocity_pd"]:
+        print("advancing to the next level.")
         model.advance()
-        print(f"loaded rectifier. advancing to the next level")
-    if not args.new and isinstance(model, ProgressiveDistillation):
-        model.advance()
-        print(f"loaded progressive distiller at stage {model.stage} (K={model.K})")
 
     #endregion
 
@@ -110,6 +109,7 @@ if __name__ == "__main__":
     for ctr, update in enumerate(model.train_model(dataset_train, dataset_test, optimizers, **modelparams["training_kwargs"])):
 
 
+
         #region status update (terminal and tensorboard) 
         time_passed = time_passed_init + (time.time() - starting_time)
         seconds = int(time_passed) % 60
@@ -120,18 +120,18 @@ if __name__ == "__main__":
         if ctr % 100 == 0:
             pprint.pprint({
                 "model": str(model),
-                "modeltype": args.modeltype,
+                "mode": args.mode,
                 "filename": model.filename,
                 "update": update,
                 "time_passed": f"{days}d {hours}h {minutes}m {seconds}s",
                 "iter": ctr_init + ctr
             })
 
-        for k, v in update.items(): writer.add_scalars(f"{args.modeltype}/{k}", v, ctr_init + ctr)
+        for k, v in update.items(): writer.add_scalars(f"{args.mode}/{k}", v, ctr_init + ctr)
         #endregion
 
         
-        if ctr % 1000 == 0: 
+        if ctr % 1000 == 0 or ctr > args.max_iter: 
             timestamp = datetime.datetime.now().isoformat().split(".")[0].replace(":","_").replace("-","_")
             
             full_state_dict = model.state_dict()
@@ -149,7 +149,8 @@ if __name__ == "__main__":
             torch.save(serialized_state, state_path)
             time.sleep(0.1)
             fname = ".".join( state_path.split("/")[-1].split(".")[:-1] )
-            print(f"saving checkpoint @ {args.experiment}/checkpoints/{fname}_{timestamp}.pt")
-            torch.save(serialized_state, f"{args.experiment}/checkpoints/{fname}_{timestamp}.pt")
+            print(f"saving checkpoint @ {args.experiment}/checkpoints/{fname}__{timestamp}.pt")
+            torch.save(serialized_state, f"{args.experiment}/checkpoints/{fname}__{timestamp}.pt")
 
+        if ctr > args.max_iter: break
     #endregion

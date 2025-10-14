@@ -30,7 +30,7 @@ class VelocityModel(TimeSeriesModel):
         if not isinstance(dt, torch.Tensor):    dt = torch.tensor(dt)
         if not isinstance(steps, torch.Tensor): steps = torch.tensor(steps)
 
-        dt_small = (dt / steps).expand(len(y1))
+        dt_small = ((1. * dt) / steps).expand(len(y1))
         dt_small_ = dt_small.view(-1, *[1]*(y1.dim()-1))
 
         for i in range(steps):

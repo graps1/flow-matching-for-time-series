@@ -9,7 +9,7 @@ class Rectifier(TimeSeriesModel):
     def __init__(self, velocity_model: VelocityModel):
         super().__init__()
         self.rectified_velocity_model = copy.deepcopy(velocity_model)
-        self.base_velocity_model = copy.deepcopy(self.rectified_velocity_model)
+        self.advance()
 
     def advance(self):
         self.base_velocity_model = copy.deepcopy(self.rectified_velocity_model)
