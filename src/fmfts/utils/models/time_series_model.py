@@ -13,7 +13,7 @@ class TimeSeriesModel(torch.nn.Module):
         raise NotImplementedError()
 
     def additional_info(self):
-        raise NotImplementedError()
+        return {}
     
     def __repr__(self):
         info = self.additional_info()
@@ -23,8 +23,9 @@ class TimeSeriesModel(torch.nn.Module):
     @property
     def filename(self):
         info = self.additional_info()
-        info_str = "_".join(f"{key}{value}" for key, value in info.items())
-        return f"{self.__class__.__name__}_{info_str}.pt"
+        info_str = "__".join(f"{key}_{value}" for key, value in info.items())
+        if info_str == "": return f"{self.__class__.__name__}.pt"
+        else:              return f"{self.__class__.__name__}__{info_str}.pt"
     
     def init_optimizers(self, lr):
         return { "self": torch.optim.AdamW(self.parameters(), lr=lr, weight_decay=0.0) }

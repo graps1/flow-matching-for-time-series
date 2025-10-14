@@ -25,12 +25,12 @@ class VelocityModel(TimeSeriesModel):
         return loss
     
     def integrate(self, y1, x, t=0.0, dt=1.0, steps = 10, method="midpoint"):
-        if isinstance(dt, torch.Tensor) or isinstance(steps, torch.Tensor):
-            dt_small = (dt / steps).expand(len(y1))
-        else:
-            dt_small = torch.full((len(y1),), dt/steps)
+        assert method in ["euler", "rk4", "midpoint"]
+        if not isinstance(t, torch.Tensor):     t = torch.tensor(t)
+        if not isinstance(dt, torch.Tensor):    dt = torch.tensor(dt)
+        if not isinstance(steps, torch.Tensor): steps = torch.tensor(steps)
 
-        # dt = torch.tensor(1/steps).expand(len(y1))
+        dt_small = (dt / steps).expand(len(y1))
         dt_small_ = dt_small.view(-1, *[1]*(y1.dim()-1))
 
         for i in range(steps):
@@ -50,15 +50,6 @@ class VelocityModel(TimeSeriesModel):
         return x
 
     def sample(self, y1, x0=None, steps=10, method="midpoint"):
-        assert method in ["euler", "rk4", "midpoint"]
         if x0 is None: x0 = self.p0.sample(y1.shape).to(y1.device)
-        return self.integrate(y1, x0, t=0.0, dt=1.0, steps=steps, method=method)
-
-        # def v(x, y, t):
-        #     vel = self(x, y, t)
-        #     score = t.view(-1,*[1]*(x.dim()-1))*vel - x
-        #     return vel + c_ml * score
-        
-        x = x0
-
-        # return x
+        x = self.integrate(y1, x0, t=0.0, dt=1.0, steps=steps, method=method)
+        return x
