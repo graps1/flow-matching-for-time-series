@@ -3,7 +3,7 @@
 #SBATCH -N 1 --gpus-per-node=A40:1
 #SBATCH -t 4-23:00:00 # time
 #SBATCH -J dist_s1
-#SBATCH -o tst_s1.out
+#SBATCH -o tst_rti3d.out
 
 ##############################################################################################
 #IMP INFO ABOUT ALVIS
@@ -24,10 +24,11 @@ source /mimer/NOBACKUP/groups/kthmech/abhvis/load_modules_v25.sh
 # Run DistributedDataParallel with torch.distributed.launch
 #python trainer.py ns2d velocity_pd
 #python multistage_pd.py ns2d 
+python multistage_pd.py rti3d_full
 
 #Test the trained models
 
-python eval.py ns2d --models velocity_pd,flow,velocity --checkpoints ns2d/trained_models/stage_1_student.pt,ns2d/trained_models/state_flow.pt,ns2d/trained_models/state_velocity_teacher1.pt --mode one_step,rollout #with steps 25,teacher 50
+#python eval.py ns2d --models velocity_pd,flow,velocity --checkpoints ns2d/trained_models/stage_1_student.pt,ns2d/trained_models/state_flow.pt,ns2d/trained_models/state_velocity_teacher1.pt --mode one_step,rollout #with steps 25,teacher 50
 #python eval.py ns2d --models velocity_pd,flow,velocity --checkpoints ns2d/trained_models/stage_2_student.pt,ns2d/trained_models/state_flow.pt,ns2d/trained_models/state_velocity_teacher1.pt --mode one_step,rollout #with steps 12,teacher 50
 #python eval.py ns2d --models velocity_pd,flow,velocity --checkpoints ns2d/trained_models/stage_3_student.pt,ns2d/trained_models/state_flow.pt,ns2d/trained_models/state_velocity_teacher1.pt --mode one_step,rollout #with steps 6,teacher 50
 

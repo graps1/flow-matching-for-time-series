@@ -4,6 +4,7 @@ from fmfts.utils.unet import UNet
 from fmfts.utils.models.cfm_velocity import VelocityModel
 from fmfts.utils.models.cfm_single_step import SingleStepModel
 from fmfts.utils.models.cfm_flow import FlowModel
+from fmfts.utils.models.cfm_velocity_pd import DistilledVelocityMixin
 
 
 
@@ -82,3 +83,38 @@ class FlowModelSlicedRTI3D(FlowModel):
             
         z = torch.cat([x, y, tx, pos, delta], dim=1)
         return self.phi_net(z)
+
+
+class VelocityPDSlicedRTI3D(DistilledVelocityMixin, VelocityModelSlicedRTI3D):
+    def __init__(
+        self,
+        teacher,                         # a trained VelocityModelSlicedRTI3D (the teacher)
+        K: int = 2,                      # how many teacher fine steps to distill into 1 student macro step
+        method: str = "midpoint",        # 'euler' | 'midpoint' | 'rk4'
+        p0: torch.distributions.Distribution = torch.distributions.Normal(0, 1),
+        features=(128, 196, 196, 256),
+        include_timestamp: bool = True,
+        include_vertical_position: bool = True,
+        loss: str = "l2",
+        delta_sampler=None,              # optional custom sampler for (delta, t)
+        log_delta_t: bool = False,
+    ):
+        # Initialize the velocity model (creates self.v_net)
+        VelocityModelSlicedRTI3D.__init__(
+            self,
+            p0=p0,
+            features=features,
+            include_timestamp=include_timestamp,
+            include_vertical_position=include_vertical_position,
+            loss=loss
+        )
+
+        # Initialize the PD mixin (overrides compute_loss)
+        DistilledVelocityMixin.__init__(
+            self,
+            teacher_velocity=teacher,
+            K=K,
+            method=method,
+            delta_sampler=delta_sampler,
+            log_delta_t=log_delta_t,
+        )
