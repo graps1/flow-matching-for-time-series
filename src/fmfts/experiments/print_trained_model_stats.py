@@ -15,6 +15,7 @@ for experiment in experiments:
             time_passed = state_dict.get("time_passed", None)
             number_iterations = state_dict.get("tensorboard_ctr", None)
             optimizer = state_dict.get("optimizer", None)
+           
             if optimizer is not None: 
                 stack = [ ("",k,optimizer) for k in optimizer.keys()]
                 while len(stack)>0:
@@ -25,6 +26,15 @@ for experiment in experiments:
                     elif isinstance(d[key], dict):
                         for k in d[key].keys():
                             stack.append((parent + "/" + str(key), k, d[key]))
+            
+            model = state_dict["model"]
+            top_levels = { k.split(".")[0] for k in model.keys() }
+            for tl in top_levels:
+                total_params = 0
+                for k in model.keys():
+                    if k.startswith(tl + "."):
+                        total_params += torch.tensor(model[k].shape).prod()
+                print(f"\t{tl} parameters: {total_params/1e6:.2f} million")
 
             if time_passed is not None: print(f"\ttime passed: {datetime.timedelta(seconds=time_passed)}")
             print(f"\tnumber of iterations: {number_iterations}")
