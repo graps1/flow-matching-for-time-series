@@ -16,9 +16,10 @@ class ProgressiveDistillation(TimeSeriesModel):
         self.velocity = velocity_model
         self.teacher  = velocity_model
         self.student  = copy.deepcopy(velocity_model)
-        
+
         self.K = K
         self.register_buffer("stage", torch.tensor(stage, dtype=torch.int))
+        self.register_buffer("has_advanced", torch.tensor(False, dtype=torch.bool))
 
     def additional_info(self):
         return { "k": self.K, "stage": self.stage.item() }
@@ -31,6 +32,7 @@ class ProgressiveDistillation(TimeSeriesModel):
         self.stage = self.stage - 1
         self.teacher = copy.deepcopy(self.student)
         self.student = copy.deepcopy(self.velocity)
+        self.has_advanced = torch.tensor(True)
 
     def compute_loss(self, y1, x1):
 
@@ -45,7 +47,8 @@ class ProgressiveDistillation(TimeSeriesModel):
             # if we're using the Euler method here with steps = K, 
             # the teacher takes K equal steps of size delta/K = K**(-stage-1) = K**(-(stage+1)), 
             # i.e., the integrate method evaluates the teacher model at deltas of K**(-(stage+1)).
-            x_teacher = self.teacher.integrate(y1, xt, t=t, dt=delta, steps=self.K, method="euler")
+            method = "euler" if self.has_advanced else "midpoint"
+            x_teacher = self.teacher.integrate(y1, xt, t=t, dt=delta, steps=self.K, method=method)
 
         # Student: 1 macro-step with the student velocity
         x_student = self.student.integrate(y1, xt, t=t, dt=delta, steps=1, method="euler")
