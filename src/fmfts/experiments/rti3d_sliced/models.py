@@ -3,6 +3,7 @@ import torch
 from fmfts.utils.unet import UNet
 from fmfts.utils.models.cfm_velocity import VelocityModel
 from fmfts.utils.models.cfm_dir_dist import DirectDistillationModel
+from fmfts.utils.models.deterministic import DeterministicModel
 
 
 
@@ -37,6 +38,8 @@ class VelocityModelSlicedRTI3D(VelocityModel):
 
         return self.v_net(z)
 
+
+
 class DirectDistillationModelSlicedRTI3D(DirectDistillationModel):
     def __init__(self, 
                  velocity_model):
@@ -56,3 +59,36 @@ class DirectDistillationModelSlicedRTI3D(DirectDistillationModel):
             z = torch.cat([z, pos], dim=1)
 
         return self.phi_net(z)
+
+
+
+class DeterministicModelSlicedRTI3D(DeterministicModel):
+    def __init__(self, 
+                 features=(128, 196, 196, 256),
+                 include_timestamp=True,
+                 include_vertical_position=True):
+        super().__init__()
+        self.n_channels = 4
+        self.include_timestamp = include_timestamp
+        self.include_vertical_position = include_vertical_position
+        self.n_channels = 4 + self.include_timestamp
+        self.in_dim = self.n_channels + self.include_vertical_position
+
+        self.unet = UNet(
+            in_channels=self.in_dim, out_channels=self.n_channels,
+            padding=("zeros", "circular"),
+            features=features,
+            nl = torch.nn.ReLU()
+        )
+        
+    def forward(self, y):
+        bs, _, width, height = y.shape
+
+        if self.include_vertical_position:
+            pos = torch.linspace(0, 1, height)
+            pos = pos.view(1, 1, 1, height)
+            pos = pos.expand(bs, 1, width, height)
+            y = torch.cat([y, pos], dim=1)
+
+        x = self.unet(y)
+        return x 
