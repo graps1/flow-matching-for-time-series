@@ -28,8 +28,8 @@ params = {
 
     "deterministic": {
         "model_kwargs": {  "features": (128, 196, 196), },
-        "training_kwargs": { "batch_size": 32, },
-        "optimizer_init": { "lr": 1e-4 },
+        "training_kwargs": { "batch_size": 8, },
+        "optimizer_init": { "lr": 1e-5 },
         "cls": DeterministicModelNS2D,
     },
 

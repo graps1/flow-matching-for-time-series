@@ -8,7 +8,7 @@ params = {
 
     "velocity": {
         "model_kwargs": { "features": (128, 196), },
-        "training_kwargs": { "batch_size": 32, },
+        "training_kwargs": { "batch_size": 8, },
         "optimizer_init": { "lr": 1e-5 },
         "cls": VelocityModelFullRTI3D
     },
@@ -34,13 +34,19 @@ params = {
     },
 
     "add": {
-        "training_kwargs": { "batch_size": 8, },
+        "training_kwargs": { "batch_size": 4, }, # up to 100k
         "model_kwargs": { 
             "lmbda": 0.9,
             "gamma": 25.,
-            "generator_rate": 1,
+            "generator_rate": 10,
         },
-        "optimizer_init": { "lr_G": 1e-6, "lr_D": 5e-5 },
+        "optimizer_init": { "lr_G": 1e-6, "lr_D": 1e-5 },
+    },
+    
+    "prog_dist": {
+        "model_kwargs": { "K": 2, "stage": 3, },
+        "training_kwargs": { "batch_size": 8, },
+        "optimizer_init": { "lr": 1e-5 },
     },
 
     "deterministic": {
