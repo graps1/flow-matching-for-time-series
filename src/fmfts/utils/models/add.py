@@ -16,7 +16,7 @@ class AdversarialDiffusionDistillation(TimeSeriesModel):
         self.generator_rate = generator_rate
 
     def additional_info(self):
-        return { "lmbda": self.lmbda, "gamma": self.gamma, "grate": self.generator_rate }
+        return { "lmbda": self.lmbda  }
     
     def init_optimizers(self, lr_G = 1e-5, lr_D = 1e-4):
         return { "G": torch.optim.Adam(self.G_.parameters(), lr=lr_G, betas=[0., 0.99]), 
