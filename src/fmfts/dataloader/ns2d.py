@@ -41,30 +41,34 @@ class DatasetNS2D(Dataset):
         y = y.flatten(end_dim=1)
         x = x.flatten(end_dim=1)
         return y, x
-
-    def compute_speed(self, x):
-        squeezed = len(x.shape) == 3
-        if squeezed: x = x.unsqueeze(0)
-        x = self.denormalize(x)
-        speed = ( x[:,0]**2 + x[:,1]**2 )**0.5
-        if squeezed: speed = speed.squeeze(0)
-        return speed
     
-    def compute_energy(self, x):
+    def get_fields(self, x):
         squeezed = len(x.shape) == 3
         if squeezed: x = x.unsqueeze(0)
         x = self.denormalize(x)
-        density = x[:,2]
-        speed = ( x[:,0]**2 + x[:,1]**2 )**0.5
-        energy = 0.5 * density * speed**2
-        if squeezed: energy = energy.squeeze(0)
+        density, velocity, pressure = x[:,2], x[:,:2], x[:,3]
+        if squeezed: 
+            velocity = velocity.squeeze(0)
+            density = density.squeeze(0)
+            pressure = pressure.squeeze(0)
+        return density, velocity, pressure
+
+    def compute_momentum(self, x):
+        density, velocity, _ = self.get_fields(x)
+        momentum = density * velocity.pow(2).sum(dim=-3).pow(0.5)
+        return momentum
+
+    def compute_energy(self, x):
+        density, velocity, _ = self.get_fields(x)
+        energy = 0.5 * density * velocity.pow(2).sum(dim=-3)
         return energy
     
-    def plot(self, x, *ax, visualization="sqrt_energy"):
+    def plot(self, x, *ax, visualization="momentum"):
         if x.dim() == 3:
             x = x.unsqueeze(0)
 
-        x = self.denormalize(x)
+        # rho, u = self.get_density_and_velocity(x)
+        # x = self.denormalize(x)
 
         Y, X = torch.meshgrid(
             torch.linspace(0, 1, 64), 
@@ -76,21 +80,22 @@ class DatasetNS2D(Dataset):
         for i in range(n_plots := len(ax)):
             k = i * len(x) // n_plots
             if visualization == "density": 
-                ax[i].imshow(x[k,2].cpu().numpy(), extent=(0,1,0,1), cmap="coolwarm" ) #, vmin=0.0, vmax=1.0)
-            if visualization == "speed": 
-                speed = self.compute_speed(x[k])
-                ax[i].imshow(speed.cpu().numpy(), extent=(0,1,0,1), vmin=0, vmax=2)
-            if visualization == "sqrt_energy": 
-                sqrt_energy = self.compute_energy(x[k])**0.5
-                ax[i].imshow(sqrt_energy.cpu().numpy(), extent=(0,1,0,1), vmin=0.0, vmax=1.7, cmap="viridis")
-            if visualization == "streamlines":
-                speed = self.compute_speed(x[k]).cpu().numpy()
-                norm = Normalize(vmin=0, vmax=4.5, clip=True)
-                ax[i].streamplot(X, Y, x[k,1].cpu().numpy(), x[k,0].cpu().numpy(), density=1.5, 
-                                linewidth=1, 
-                                color=speed,
-                                norm=norm, 
-                                cmap="nipy_spectral")
+                rho, _ = self.get_density_and_velocity(x[k])
+                ax[i].imshow(rho.cpu().numpy(), extent=(0,1,0,1), cmap="coolwarm" ) #, vmin=0.0, vmax=1.0)
+            if visualization == "energy": 
+                energy = self.compute_energy(x[k])
+                ax[i].imshow(energy.cpu().numpy(), extent=(0,1,0,1), vmin=0.0, vmax=1.7, cmap="viridis")
+            if visualization == "momentum": 
+                momentum = self.compute_momentum(x[k])
+                ax[i].imshow(momentum.cpu().numpy(), extent=(0,1,0,1), vmin=0.0, vmax=3, cmap="viridis")
+            # if visualization == "streamlines":
+            #     speed = self.compute_momentum(x[k]).cpu().numpy()
+            #     norm = Normalize(vmin=0, vmax=4.5, clip=True)
+            #     ax[i].streamplot(X, Y, x[k,1].cpu().numpy(), x[k,0].cpu().numpy(), density=1.5, 
+            #                     linewidth=1, 
+            #                     color=speed,
+            #                     norm=norm, 
+            #                     cmap="nipy_spectral")
 
             ax[i].set_xlim(0,1)
             ax[i].set_ylim(0,1)
