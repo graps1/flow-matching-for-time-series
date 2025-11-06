@@ -4,27 +4,25 @@ import datetime
 from torch.utils.tensorboard import SummaryWriter 
 import time
 import argparse
-import pprint
 import tqdm
 
 from fmfts.utils.models.cfm_rectifier import Rectifier
 from fmfts.utils.models.cfm_prog_dist import ProgressiveDistillation
 from fmfts.utils.models.add import AdversarialDiffusionDistillation
 
-from fmfts.experiments.rti3d_sliced.training_parameters import params as rti3d_sliced_params
-from fmfts.experiments.rti3d_full.training_parameters import params as rti3d_full_params
-from fmfts.experiments.ns2d.training_parameters import params as ns2d_params
-from fmfts.experiments.ks2d.training_parameters import params as ks2d_params
+from fmfts.experiments.sRTI.training_parameters import params as sRTI_params
+from fmfts.experiments.dRTI.training_parameters import params as dRTI_params
+from fmfts.experiments.dNSE.training_parameters import params as dNSE_params
 
 import warnings
 warnings.filterwarnings("ignore") 
 
 experiment2params = {
-    "rti3d_sliced": rti3d_sliced_params,
-    "rti3d_full": rti3d_full_params,
-    "ns2d": ns2d_params,
-    "ks2d": ks2d_params,
+    "sRTI": sRTI_params,
+    "dRTI": dRTI_params,
+    "dNSE": dNSE_params,
 }
+
 modes = [ "velocity", "dir_dist", "flow", "rectifier", "add", "prog_dist", "deterministic" ]
 
 if __name__ == "__main__":
@@ -37,12 +35,9 @@ if __name__ == "__main__":
                         help=f"must be in {list(experiment2params.keys())}")
     parser.add_argument("mode", 
                         help=f"must be in {list(modes)}")
-    parser.add_argument("--new", "-n", 
-                        help="creates and trains a new model", 
-                        action="store_true")
     parser.add_argument("--checkpoint", "-c", 
                         help="the savefile to load", 
-                        default="")
+                        default=None)
     parser.add_argument("--velocity", "-v", 
                         help="the savefile to load the velocity model from (if necessary for distillation)", 
                         default=None)
@@ -52,9 +47,6 @@ if __name__ == "__main__":
     parser.add_argument("--max-iter", "-m", 
                         help="maximum number of iterations to train for", 
                         type=int, default=1000000)
-    # parser.add_argument("--silent", "-s", 
-    #                     help="suppresses terminal output", 
-    #                     action="store_true")
 
     # additional parameters that can be set by the user
     parser.add_argument("--pd-stage", "-pds", 
@@ -96,12 +88,12 @@ if __name__ == "__main__":
     #endregion
 
 
-    if args.new: print(f"model parameters: {model_kwargs}")
+    if not args.checkpoint: print(f"model parameters: {model_kwargs}")
     print(f"training parameters: {modelparams["training_kwargs"]}")
     print(f"optimizer parameters: {modelparams["optimizer_init"]}")
     print(f"dataset parameters: {params["dataset"].get("kwargs", dict())}")
 
-    print(f"creating new model: {'YES' if args.new else 'NO'}")
+    print(f"creating new model: {'NO' if args.checkpoint else 'YES'}")
     state_dir = f"{args.experiment}/trained_models"
 
     # Ensure output directories exist
@@ -139,7 +131,7 @@ if __name__ == "__main__":
     optimizers = model.init_optimizers(**modelparams["optimizer_init"])
     time_passed_init = 0.0
     ctr_init = 0
-    if not args.new:
+    if args.checkpoint:
         serialized_state =  torch.load(args.checkpoint, weights_only=True)
         time_passed_init = serialized_state["time_passed"]
         model.load_state_dict(serialized_state["model"])
@@ -175,19 +167,7 @@ if __name__ == "__main__":
         days    = int(time_passed / (24*60*60))
 
         pbar.set_description(f"{str(model)} | total_iters = {ctr_total}/{args.max_iter}")
-        # if ctr % 100 == 0 and not args.silent:
-        # pbar.set_postfix({
-        #     "model": str(model),
-        #     # "mode": args.mode,
-        #     # "filename": model.filename,
-        #     # "update": update,
-        #     # "time_passed": f"{days}d {hours}h {minutes}m {seconds}s",
-        #     "iter": ctr_init + ctr
-        # })
-
         for k, v in update.items(): writer.add_scalars(f"{args.mode}/{k}", v, ctr_init + ctr)
-        #endregion
-
         
         if ctr % 1000 == 0 or ctr == args.max_iter - 1: 
             timestamp = datetime.datetime.now().isoformat().split(".")[0].replace(":","_").replace("-","_")
@@ -202,11 +182,9 @@ if __name__ == "__main__":
             }
 
             state_path = f"{state_dir}/{model.filename}"
+            fname_checkpoint = ".".join( state_path.split("/")[-1].split(".")[:-1] )
 
-            # print(f"saving checkpoint @ {state_path}")
             torch.save(serialized_state, state_path)
             time.sleep(0.1)
-            fname = ".".join( state_path.split("/")[-1].split(".")[:-1] )
-            # print(f"saving checkpoint @ {args.experiment}/checkpoints/{fname}__{timestamp}.pt")
-            torch.save(serialized_state, f"{args.experiment}/checkpoints/{fname}__{timestamp}.pt")
+            torch.save(serialized_state, f"{args.experiment}/checkpoints/{fname_checkpoint}__{timestamp}.pt")
     #endregion
