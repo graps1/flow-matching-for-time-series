@@ -1,7 +1,7 @@
-from fmfts.experiments.rti3d_sliced.models import (VelocityModelSlicedRTI3D, 
-                                                   DirectDistillationModelSlicedRTI3D,
-                                                   DeterministicModelSlicedRTI3D)
-from fmfts.dataloader.rti3d_sliced import DatasetSlicedRTI3D
+from fmfts.experiments.sRTI.models import (VelocityModelSlicedRTI3D, 
+                                           DirectDistillationModelSlicedRTI3D,
+                                           DeterministicModelSlicedRTI3D)
+from fmfts.dataloader.sRTI import DatasetSlicedRTI3D
 
 params = {
 

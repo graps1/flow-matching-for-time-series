@@ -144,7 +144,7 @@ class DatasetFullRTI3D(Dataset):
         if colorbar:
             m = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
             m.set_array([])
-            plt.colorbar(m,  ax=ax, use_gridspec=False, location="left", anchor=(-1.0, 0.5), shrink=0.9, label="Density", ticks=[0.25, 0.5, 0.75, 1.0])
+            plt.colorbar(m,  ax=ax, use_gridspec=False, location="left", anchor=(-1.0, 0.5), shrink=0.9, label="Density")
     
     def plot(self, x, *ax, colorbar=False):
 

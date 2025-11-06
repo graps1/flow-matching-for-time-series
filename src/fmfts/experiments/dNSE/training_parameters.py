@@ -1,9 +1,9 @@
-from fmfts.experiments.ns2d.models import (
+from fmfts.experiments.dNSE.models import (
     VelocityModelNS2D,
     DirectDistillationModelNS2D,
     DeterministicModelNS2D
 )
-from fmfts.dataloader.ns2d import DatasetNS2D
+from fmfts.dataloader.dNSE import DatasetNS2D
 
 
 params = {

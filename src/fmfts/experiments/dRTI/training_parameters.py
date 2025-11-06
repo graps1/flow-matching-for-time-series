@@ -1,7 +1,7 @@
-from fmfts.experiments.rti3d_full.models import VelocityModelFullRTI3D, \
-                                                  DirectDistillationModelFullRTI3D, \
-                                                  DeterministicModelFullRTI3D
-from fmfts.dataloader.rti3d_full import DatasetFullRTI3D
+from fmfts.experiments.dRTI.models import VelocityModelFullRTI3D, \
+                                          DirectDistillationModelFullRTI3D, \
+                                          DeterministicModelFullRTI3D
+from fmfts.dataloader.dRTI import DatasetFullRTI3D
 
 
 params = {

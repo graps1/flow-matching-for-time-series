@@ -1,7 +1,6 @@
 import os
 import torch 
 import matplotlib.pyplot as plt
-from matplotlib.colors import Normalize
 from torch.utils.data import Dataset
 
 class DatasetNS2D(Dataset):
@@ -10,9 +9,7 @@ class DatasetNS2D(Dataset):
         
         datapath = f"{os.path.dirname(os.path.abspath(__file__))}/../datasets/ns2d/ns2d_data_{mode}.pt"
         self.history = history
-        # data has shape (n_samples, n_timesteps, n_channels, height, width)
-        self.data = torch.load(datapath, weights_only=True)
-        self.data = self.data.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
+        self.data = torch.load(datapath, weights_only=True).to(torch.get_default_device())
         self.n_samples, self.total_sequence_len, self.n_channels, self.height, self.width = self.data.shape
         
         self.mean = torch.tensor([2.7828e-05, 8.4455e-05, 1.0000e+00, 6.0033e+01]).view(1,-1,1,1)
@@ -67,9 +64,6 @@ class DatasetNS2D(Dataset):
         if x.dim() == 3:
             x = x.unsqueeze(0)
 
-        # rho, u = self.get_density_and_velocity(x)
-        # x = self.denormalize(x)
-
         Y, X = torch.meshgrid(
             torch.linspace(0, 1, 64), 
             torch.linspace(0, 1, 64), 
@@ -85,14 +79,6 @@ class DatasetNS2D(Dataset):
             if visualization == "momentum": 
                 momentum = self.compute_momentum(x[k])
                 ax[i].imshow(momentum.cpu().numpy(), extent=(0,1,0,1), vmin=0.0, vmax=2.75, cmap="viridis")
-            # if visualization == "streamlines":
-            #     speed = self.compute_momentum(x[k]).cpu().numpy()
-            #     norm = Normalize(vmin=0, vmax=4.5, clip=True)
-            #     ax[i].streamplot(X, Y, x[k,1].cpu().numpy(), x[k,0].cpu().numpy(), density=1.5, 
-            #                     linewidth=1, 
-            #                     color=speed,
-            #                     norm=norm, 
-            #                     cmap="nipy_spectral")
 
             ax[i].set_xlim(0,1)
             ax[i].set_ylim(0,1)

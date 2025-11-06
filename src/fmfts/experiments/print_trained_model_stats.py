@@ -3,7 +3,7 @@ import torch
 import datetime
 import argparse
 
-experiments = [ "ks2d", "ns2d", "rti3d_sliced", "rti3d_full" ]
+experiments = [ "dNSE", "sRTI", "dRTI" ]
 
 
 parser = argparse.ArgumentParser()
