@@ -10,19 +10,19 @@ params = {
 
     "velocity": {
         "model_kwargs": { "features": (128, 196, 196), },
-        "training_kwargs": { "batch_size": 32, },
-        "optimizer_init": { "lr": 1e-4 },
+        "training_kwargs": { "batch_size": 8, },
+        "optimizer_init": { "lr": 1e-5 },
         "cls": VelocityModelNS2D,
     },
 
     "dir_dist": {
         "model_kwargs": { },
         "training_kwargs": {
-            "batch_size": 32,
+            "batch_size": 8,
             "steps": 10,
             "method": "midpoint",
         },
-        "optimizer_init": { "lr": 1e-4 },
+        "optimizer_init": { "lr": 1e-5 },
         "cls": DirectDistillationModelNS2D,
     },
 
@@ -42,13 +42,25 @@ params = {
         "optimizer_init": { "lr": 1e-5 },
     },
 
+    # for +150k iterations
+    # "add": {
+    #     "training_kwargs": { "batch_size": 8, },
+    #     "optimizer_init": { "lr_G": 5e-6, "lr_D": 5e-5 },
+    #     "model_kwargs": { 
+    #         "lmbda": 0.9,
+    #         "gamma": 5.,
+    #         "generator_rate": 5,
+    #     },
+    # },
+
+    # for +20k iterations
     "add": {
         "training_kwargs": { "batch_size": 8, },
-        "optimizer_init": { "lr_G": 1e-6, "lr_D": 5e-5 },
+        "optimizer_init": { "lr_G": 1e-6, "lr_D": 1e-5 },
         "model_kwargs": { 
             "lmbda": 0.9,
-            "gamma": 10.,
-            "generator_rate": 1,
+            "gamma": 5.,
+            "generator_rate": 5,
         },
     },
 

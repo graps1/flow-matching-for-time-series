@@ -79,15 +79,12 @@ class DatasetNS2D(Dataset):
         if ax is None: _, ax = plt.subplots(1, 5, figsize=(12, 2.5), sharey=True, sharex=True)
         for i in range(n_plots := len(ax)):
             k = i * len(x) // n_plots
-            if visualization == "density": 
-                rho, _ = self.get_density_and_velocity(x[k])
-                ax[i].imshow(rho.cpu().numpy(), extent=(0,1,0,1), cmap="coolwarm" ) #, vmin=0.0, vmax=1.0)
             if visualization == "energy": 
                 energy = self.compute_energy(x[k])
                 ax[i].imshow(energy.cpu().numpy(), extent=(0,1,0,1), vmin=0.0, vmax=1.7, cmap="viridis")
             if visualization == "momentum": 
                 momentum = self.compute_momentum(x[k])
-                ax[i].imshow(momentum.cpu().numpy(), extent=(0,1,0,1), vmin=0.0, vmax=3, cmap="viridis")
+                ax[i].imshow(momentum.cpu().numpy(), extent=(0,1,0,1), vmin=0.0, vmax=2.75, cmap="viridis")
             # if visualization == "streamlines":
             #     speed = self.compute_momentum(x[k]).cpu().numpy()
             #     norm = Normalize(vmin=0, vmax=4.5, clip=True)

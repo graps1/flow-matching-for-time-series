@@ -1,14 +1,25 @@
 import os
 import torch
 import datetime
+import argparse
 
 experiments = [ "ks2d", "ns2d", "rti3d_sliced", "rti3d_full" ]
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--experiment", "-e", type=str, default=None, help="Specify a single experiment to print stats for.")
+parser.add_argument("--prefix", "-p", type=str, default="", help="File prefix to filter models.")
+args = parser.parse_args()
+
+if args.experiment is not None:
+    experiments = [args.experiment]
+
 for experiment in experiments:
     print("="*10 + " " + experiment + " " +  "="*10)
     path = f"./{experiment}/trained_models/"
     files = os.listdir(path)
     for file in files:
-        if file.endswith(".pt"):
+        if file.startswith(args.prefix) and file.endswith(".pt"):
             size = os.path.getsize(os.path.join(path, file)) / (1024*1024)
             print(f"{file}:")
             state_dict = torch.load(os.path.join(path, file), weights_only=True)
@@ -36,7 +47,10 @@ for experiment in experiments:
                         total_params += torch.tensor(model[k].shape).prod()
                 print(f"\t{tl} parameters: {total_params/1e6:.2f} million")
 
-            if time_passed is not None: print(f"\ttime passed: {datetime.timedelta(seconds=time_passed)}")
+            if time_passed is not None: 
+                print(f"\ttime passed: {datetime.timedelta(seconds=time_passed)}")
+                if number_iterations is not None:
+                    print(f"\titerations/second: {number_iterations / time_passed:.2f}")
             print(f"\tnumber of iterations: {number_iterations}")
             #print(f"  optimizer state: betas = {optimizer["betas"]}, ")
             print(f"\tsize: {size:.2f} MB")

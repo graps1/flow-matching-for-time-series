@@ -82,8 +82,9 @@ class DatasetFullRTI3D(Dataset):
 
         return y, x
     
-    def __plot_density_3d(self, density, ax):
+    def __plot_density_3d(self, density, ax, colorbar=False):
         norm = Normalize(vmin=self.rho2, vmax=self.rho1)
+        cmap = plt.get_cmap("coolwarm")
             
         x_plane = density[-1,:,:]
         y_plane = density[:,0,:]
@@ -95,7 +96,7 @@ class DatasetFullRTI3D(Dataset):
             indexing="ij")
         xi = torch.ones_like(zi)
 
-        colors = plt.get_cmap("coolwarm")(norm(x_plane.cpu().numpy()))
+        colors = cmap(norm(x_plane.cpu().numpy()))
         ax.plot_surface(
             xi.cpu().numpy(), 
             yi.cpu().numpy(), 
@@ -110,7 +111,7 @@ class DatasetFullRTI3D(Dataset):
             indexing="ij")
         zi = torch.ones_like(xi)
 
-        colors = plt.get_cmap("coolwarm")(norm(z_plane.cpu().numpy()))
+        colors = cmap(norm(z_plane.cpu().numpy()))
         ax.plot_surface(
             xi.cpu().numpy(), 
             yi.cpu().numpy(), 
@@ -125,7 +126,7 @@ class DatasetFullRTI3D(Dataset):
             indexing="ij")
         yi = torch.zeros_like(xi)
 
-        colors = plt.get_cmap("coolwarm")(norm(y_plane.cpu().numpy()))
+        colors = cmap(norm(y_plane.cpu().numpy()))
         ax.plot_surface(
             xi.cpu().numpy(), 
             yi.cpu().numpy(), 
@@ -139,8 +140,13 @@ class DatasetFullRTI3D(Dataset):
         ax.set_zlim(0,1)
         ax.set_aspect("equal")
         ax.view_init(elev=30, azim=-45, roll=0)
+
+        if colorbar:
+            m = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+            m.set_array([])
+            plt.colorbar(m,  ax=ax, use_gridspec=False, location="left", anchor=(-1.0, 0.5), shrink=0.9, label="Density", ticks=[0.25, 0.5, 0.75, 1.0])
     
-    def plot(self, x, *ax):
+    def plot(self, x, *ax, colorbar=False):
 
         if x.dim() == 4:
             x = x.unsqueeze(0)
@@ -158,7 +164,7 @@ class DatasetFullRTI3D(Dataset):
         for i in range(len(ax)):
             k = i * len(x) // len(ax)
             density = x[k,3].clip(min=0)
-            self.__plot_density_3d(density, ax[i])
+            self.__plot_density_3d(density, ax[i], colorbar=colorbar and i==len(ax)-1)
 
         return ax
         

@@ -8,15 +8,18 @@ class Rectifier(TimeSeriesModel):
         super().__init__()
         self.register_buffer("stage", torch.tensor(0))
         self.rectified_velocity_model = copy.deepcopy(velocity_model)
-        self.advance()
+        self.base_velocity_model = copy.deepcopy(velocity_model)
+        self.advance(lr = 1e-5)
     
     def additional_info(self):
         return { "stage": self.stage.item() }
 
-    def advance(self):
+    def advance(self, **optimizer_params):
         self.stage = self.stage + 1
-        self.base_velocity_model = copy.deepcopy(self.rectified_velocity_model)
-        for param in self.base_velocity_model.parameters(): param.requires_grad = False
+        for param_bv, param_rv in zip(self.base_velocity_model.parameters(), self.rectified_velocity_model.parameters()): 
+            param_bv.data.copy_(param_rv.data)
+            param_bv.requires_grad = False
+        self.init_optimizers(**optimizer_params)
 
     def forward(self, x, y, tx):
         return self.rectified_velocity_model.forward(x, y, tx)

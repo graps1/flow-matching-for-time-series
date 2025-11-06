@@ -142,7 +142,7 @@ if __name__ == "__main__":
     if not args.new:
         serialized_state =  torch.load(args.checkpoint, weights_only=True)
         time_passed_init = serialized_state["time_passed"]
-        model.load_state_dict(serialized_state["model"], strict = False)
+        model.load_state_dict(serialized_state["model"])
         ctr_init = serialized_state.get("tensorboard_ctr", 0)
 
         for k, o in optimizers.items(): o.load_state_dict(serialized_state["optimizer"][k])
@@ -151,7 +151,7 @@ if __name__ == "__main__":
 
     if args.advance and args.mode in ["rectifier", "prog_dist"]:
         print("advancing to the next level.")
-        model.advance()
+        model.advance(**modelparams["optimizer_init"])
 
     #endregion
 

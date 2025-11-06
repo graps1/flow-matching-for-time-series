@@ -19,7 +19,6 @@ class ProgressiveDistillation(TimeSeriesModel):
 
         self.K = K
         self.register_buffer("stage", torch.tensor(stage, dtype=torch.int))
-        self.register_buffer("has_advanced", torch.tensor(False, dtype=torch.bool))
 
     def additional_info(self):
         return { "k": self.K, "stage": self.stage.item() }
@@ -27,15 +26,14 @@ class ProgressiveDistillation(TimeSeriesModel):
     def sample(self, y, x0=None):
         return self.student.sample(y, x0=x0, steps=self.K**self.stage, method="euler")
 
-    def advance(self):
+    def advance(self, **optimizer_params):
         assert self.stage > 0, "Already at stage 0, cannot advance further."
         self.stage = self.stage - 1
-        self.teacher = copy.deepcopy(self.student)
-        self.student = copy.deepcopy(self.velocity)
-        self.has_advanced = torch.tensor(True)
+        for param_t, param_s in zip(self.teacher.parameters(), self.student.parameters()): param_t.data.copy_(param_s.data)
+        for param_s, param_v in zip(self.student.parameters(), self.velocity.parameters()): param_s.data.copy_(param_v.data)
+        self.init_optimizers(**optimizer_params)
 
     def compute_loss(self, y1, x1):
-
         delta = torch.full((len(x1),), 1/(self.K**self.stage), device=x1.device)
         t = torch.rand_like(delta) * (1 - delta)
         t_ = t.view(-1, *[1]*(x1.dim()-1))
@@ -47,8 +45,7 @@ class ProgressiveDistillation(TimeSeriesModel):
             # if we're using the Euler method here with steps = K, 
             # the teacher takes K equal steps of size delta/K = K**(-stage-1) = K**(-(stage+1)), 
             # i.e., the integrate method evaluates the teacher model at deltas of K**(-(stage+1)).
-            method = "euler" if self.has_advanced else "midpoint"
-            x_teacher = self.teacher.integrate(y1, xt, t=t, dt=delta, steps=self.K, method=method)
+            x_teacher = self.teacher.integrate(y1, xt, t=t, dt=delta, steps=self.K, method="euler")
 
         # Student: 1 macro-step with the student velocity
         x_student = self.student.integrate(y1, xt, t=t, dt=delta, steps=1, method="euler")
