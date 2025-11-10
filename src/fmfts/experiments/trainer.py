@@ -5,6 +5,8 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 import argparse
 import tqdm
+import warnings
+warnings.filterwarnings("ignore") 
 
 from fmfts.utils.models.cfm_rectifier import Rectifier
 from fmfts.utils.models.cfm_prog_dist import ProgressiveDistillation
@@ -13,9 +15,6 @@ from fmfts.utils.models.add import AdversarialDiffusionDistillation
 from fmfts.experiments.sRTI.training_parameters import params as sRTI_params
 from fmfts.experiments.dRTI.training_parameters import params as dRTI_params
 from fmfts.experiments.dNSE.training_parameters import params as dNSE_params
-
-import warnings
-warnings.filterwarnings("ignore") 
 
 experiment2params = {
     "sRTI": sRTI_params,
@@ -26,13 +25,14 @@ experiment2params = {
 modes = [ "velocity", "dir_dist", "flow", "rectifier", "add", "prog_dist", "deterministic" ]
 
 if __name__ == "__main__":
-    torch.set_default_device("cuda")
-
     parser = argparse.ArgumentParser()
 
     # general settings
     parser.add_argument("experiment", 
                         help=f"must be in {list(experiment2params.keys())}")
+    parser.add_argument("--device", "-d", 
+                        help="the device to use", 
+                        default="cuda")
     parser.add_argument("mode", 
                         help=f"must be in {list(modes)}")
     parser.add_argument("--checkpoint", "-c", 
@@ -61,8 +61,9 @@ if __name__ == "__main__":
     parser.add_argument("--add-gamma", "-addg", 
                         help="overwrites the gradient penalty weight (gamma) (only for mode=add)", 
                         default=None, type=float)
-
+    
     args = parser.parse_args()
+    torch.set_default_device(args.device)
     assert args.mode in modes, f"mode must be in {list(modes)}"
     assert args.experiment in experiment2params, f"experiment must be in {list(experiment2params.keys())}"
     params = experiment2params[args.experiment]

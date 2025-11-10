@@ -72,14 +72,14 @@ class AdversarialDiffusionDistillation(TimeSeriesModel):
             batch_size=batch_size, 
             shuffle=True, 
             num_workers=0,  
-            generator=torch.Generator(device='cuda'))
+            generator=torch.Generator(device=torch.get_default_device()))
 
         dataloader_test = DataLoader(
             dataset_test, 
             batch_size=1, 
             shuffle=True, 
             num_workers=0,  
-            generator=torch.Generator(device='cuda'))
+            generator=torch.Generator(device=torch.get_default_device()))
 
         dataiter_train = iter(dataloader_train)
         dataiter_test = iter(dataloader_test)
