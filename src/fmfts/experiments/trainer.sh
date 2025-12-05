@@ -8,17 +8,17 @@ MODEL_POSTFIX="NS2D"
 # MODEL_POSTFIX="FullRTI3D"
 
 # these are the number of iterations for each training setup
-ITERS_VELOCITY=200           # flow matching velocity model
-ITERS_DET=200                # deterministic model
-ITERS_RECTIFIER_1=500         # rectifier stage 1
-ITERS_RECTIFIER_2=1000        # rectifier stage 2
-ITERS_PD_3=300                # progressive distillation stage 3 (step size = 2^{-3} = 1/8) <-- this is trained first
-ITERS_PD_2=600                # progressive distillation stage 2 (step size = 2^{-2} = 1/4)
-ITERS_PD_1=900                # progressive distillation stage 1 (step size = 2^{-1} = 1/2)
-ITERS_PD_0=120               # progressive distillation stage 0 (step size = 2^0    = 1)   <-- this is trained last
-ITERS_ADD__lmbda_09=170      # adversarial diffusion distillation with lambda=0.9
-ITERS_ADD__lmbda_00=170      # adversarial diffusion distillation with lambda=0.0, aka Wasserstein GAN
-ITERS_DD=100                 # direct distillation
+ITERS_VELOCITY=200000           # flow matching velocity model
+ITERS_DET=200000                # deterministic model
+ITERS_RECTIFIER_1=50000         # rectifier stage 1
+ITERS_RECTIFIER_2=100000        # rectifier stage 2
+ITERS_PD_3=300000               # progressive distillation stage 3 (step size = 2^{-3} = 1/8) <-- this is trained first
+ITERS_PD_2=600000               # progressive distillation stage 2 (step size = 2^{-2} = 1/4)
+ITERS_PD_1=900000               # progressive distillation stage 1 (step size = 2^{-1} = 1/2)
+ITERS_PD_0=120000               # progressive distillation stage 0 (step size = 2^0    = 1)   <-- this is trained last
+ITERS_ADD__lmbda_09=170000      # adversarial diffusion distillation with lambda=0.9
+ITERS_ADD__lmbda_00=170000      # adversarial diffusion distillation with lambda=0.0, aka Wasserstein GAN
+ITERS_DD=100000                 # direct distillation
 
 DEVICE="cuda"
 

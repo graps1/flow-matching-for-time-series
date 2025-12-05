@@ -1,15 +1,43 @@
-Code for the paper https://arxiv.org/abs/2511.04641
+# Efficient probabilistic surrogate modeling techniques for partially-observed large-scale dynamical systems
 
-## Installation
+This repository contains the codebase for [the following paper](https://arxiv.org/abs/2511.04641):
+```
+@article{harder2025efficient,
+  title={Efficient probabilistic surrogate modeling techniques for partially-observed large-scale dynamical systems},
+  author={Harder, Hans and Vishwasrao, Abhijeet and Guastoni, Luca and Vinuesa, Ricardo and Peitz, Sebastian},
+  journal={arXiv preprint arXiv:2511.04641},
+  year={2025}
+}
+```
+
+>**Abstract**: This paper is concerned with probabilistic techniques for forecasting dynamical systems described by partial differential equations (such as, for example, the Navier-Stokes equations). In particular, it is investigating and comparing various extensions to the flow matching paradigm that reduce the number of sampling steps. In this regard, it compares direct distillation, progressive distillation, adversarial diffusion distillation, Wasserstein GANs and rectified flows. Moreover, experiments are conducted on a set of challenging systems. In particular, we also address the challenge of directly predicting 2D slices of large-scale 3D simulations, paving the way for efficient inflow generation for solvers.
+
+Accordingly, this repository implements
+- conditional flow matching models,
+- adversarial diffusion distillation,
+- Wasserstein GANs,
+- progressive distillation,
+- rectified flows,
+- and direct distillation.
+
+We have conducted experiments on three datasets, one is a downsampled version of the 2D Navier-Stokes equations, the other two are based on sliced/downsampled simulations of the 3D Rayleigh-Taylor instability:
+
+<img src="figures/dNSE_animated.gif">
+<img src="figures/sRTI_animated.gif">
+<img src="figures/dRTI_animated.gif">
+¹Flow matching ODE solved with 20 midpoint steps.
+
+
+
+## Installation & directory structure
 
 In the top level directory, run
 
     pip install -e .
 
 this installs an editable version of this project.
+The directory structure is as follwos:
 
-
-## Directory structure
 
 ```
     |- src
@@ -46,8 +74,8 @@ this installs an editable version of this project.
 
 ## Simulation data
 
-- [Compressible Navier-Stokes equations](https://drive.google.com/drive/folders/1IZ7tsLdnoQvchVx9RZq3__d5RBm7gSvc?usp=drive_link) (<0.5GB)
-- [Rayleigh-Taylor instability](https://polymathic-ai.org/the_well/datasets/rayleigh_taylor_instability/) (>200GB). Can be downloaded using the [tutorial instructions](https://polymathic-ai.org/the_well/tutorials/dataset/).
+- [Compressible Navier-Stokes equations](https://drive.google.com/drive/folders/1IZ7tsLdnoQvchVx9RZq3__d5RBm7gSvc?usp=drive_link) (<0.5GB, extracted from [PDEBench](https://arxiv.org/abs/2210.07182))
+- [Rayleigh-Taylor instability](https://polymathic-ai.org/the_well/datasets/rayleigh_taylor_instability/) (>200GB, from [The Well](https://proceedings.neurips.cc/paper_files/paper/2024/hash/4f9a5acd91ac76569f2fe291b1f4772b-Abstract-Datasets_and_Benchmarks_Track.html) ). Can be downloaded using the [tutorial instructions](https://polymathic-ai.org/the_well/tutorials/dataset/).
 
 Download the data & place the files such that the directory structure is as follows:
 
@@ -77,9 +105,7 @@ Download the data & place the files such that the directory structure is as foll
 
 ### Training models
 
-This can be done by executing the script `trainer.py` in the `src/fmfts/experiments` section. 
-
-The `trainer.py` script provides some outputs. For better visualization, I have also implemented some [tensorboard functionality](https://docs.pytorch.org/docs/stable//tensorboard.html) that tracks the training process. Visualize the training by running
+This can be done by executing the scripts `trainer.py` or `trainer.sh` in the `src/fmfts/experiments` section. The `trainer.py` script provides some outputs. For better visualization, we have also implemented some [tensorboard functionality](https://docs.pytorch.org/docs/stable//tensorboard.html) that tracks the training process. Visualize the training by running
 
     tensorboard --logdir <experiment>/runs
 
